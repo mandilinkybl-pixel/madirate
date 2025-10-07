@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mandi Rate Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #f5f7fa, #c3cfe2); padding: 20px; }
+    .sidebar {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #fff;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      width: 240px;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s;
+    }
+    .sidebar.collapsed { width: 65px !important; min-width: 65px !important; }
+    .sidebar .sidebar-header {
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 1rem 0 0.5rem 0;
+      text-align: center;
+      letter-spacing: 2px;
+      position: relative;
+    }
+    .sidebar .logo {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 0.5rem;
+      margin-top: 1rem;
+    }
+    .sidebar .nav-link {
+      color: #fff !important;
+      font-weight: 500;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1rem;
+    }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    .sidebar .nav-link i {
+      font-size: 1.3rem;
+      min-width: 26px;
+      text-align: center;
+    }
+    .sidebar .collapse-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 2;
+      transition: color 0.2s;
+    }
+    .sidebar .collapse-btn:focus {
+      outline: none;
+    }
+    .sidebar.collapsed .sidebar-header,
+    .sidebar.collapsed .logo,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .mt-auto {
+      display: none !important;
+    }
+    .sidebar.collapsed .nav-link {
+      justify-content: center;
+      padding-left: 0;
+    }
+    .sidebar.collapsed .nav-link i {
+      font-size: 1.7rem;
+    }
+    .main-content {
+      margin-left: 240px;
+      padding: 2rem 2rem 1rem 2rem;
+      transition: margin-left 0.3s;
+    }
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 65px !important;
+        padding: 1rem;
+      }
+      .sidebar {
+        width: 65px !important;
+        min-width: 65px !important;
+      }
+      .sidebar .sidebar-header,
+      .sidebar .logo,
+      .sidebar .nav-link span,
+      .sidebar .mt-auto {
+        display: none !important;
+      }
+      .sidebar .nav-link {
+        justify-content: center;
+        padding-left: 0;
+      }
+    }
+    .navbar { background: #4e54c8; margin-left:240px; transition: margin-left 0.3s;}
+    .sidebar.collapsed ~ .navbar { margin-left:65px; }
+    .navbar-brand, .nav-link { color: #fff !important; }
+    .nav-link:hover { color: #ddd !important; }
+    .card { border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+    .form-control, .btn { border-radius: 10px; }
+    .btn-primary { background: #4e54c8; border-color: #4e54c8; }
+    .suggestion-box { position: absolute; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 1000; max-height: 250px; overflow-y: auto; width: 100%; }
+    .suggestion-item { padding: 12px; cursor: pointer; }
+    .suggestion-item:hover { background: #f8f9fa; }
+    .commodity-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; }
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+    .trend-neutral { color: #6c757d; }
+    .mandi-group { margin-bottom: 2rem; background: #f8f9fa; border-radius: 15px; padding: 20px; }
+    .chart-wrap { height: 350px; }
+    .error-message { color: #dc3545; font-size: 0.9em; margin-top: 5px; }
+    @media (max-width: 768px) { .commodity-item { flex-direction: column; gap: 10px; } }
+  </style>
+</head>
+<body>
+  <!-- Sidebar with logo -->
+  <div class="sidebar" id="sidebar">
+    <button class="collapse-btn" id="collapseBtn" title="Collapse/Expand Sidebar"><i class="bi bi-list"></i></button>
+    <div class="sidebar-header">
+    
+      Mandi Panel
+    </div>
+<nav class="nav flex-column px-3 mt-2">
+  <a href="/" class="nav-link active"><i class="bi bi-house-door"></i> <span>Reports</span></a>
+  <a href="/mandi-rates" class="nav-link"><i class="bi bi-plus-square"></i> <span>Add MandiRates</span></a>
+  <a href="/mandi" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> <span>Add Mandi</span></a>
+  <a href="/commodities" class="nav-link"><i class="bi bi-clock-history"></i> <span>Commodities</span></a>
+  <a href="/states" class="nav-link"><i class="bi bi-gear"></i> <span>States</span></a>
+  <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
+</nav>
+    <div class="mt-auto px-3 pb-4 small text-center" style="opacity:0.7;">
+      <i class="bi bi-person-circle"></i> Admin Panel
+    </div>
+  </div>
+
+ 
+  <div class="main-content" id="mainContent">
+    <div class="container mt-4">
+      <h2>Mandi Rates</h2>
+
+      <!-- FILTERS: State, Mandi, Search -->
+      <div class="row g-2 mb-3">
+        <div class="col-md-3">
+          <select id="filterState" class="form-select" aria-label="Select State" required>
+            <option value="">Select State</option>
+            <% states.forEach(state => { %>
+              <option value="<%= state._id %>"><%= state.name %></option>
+            <% }) %>
+          </select>
+          <div class="error-message" id="stateError"></div>
+        </div>
+        <div class="col-md-3">
+          <input type="text" id="filterMandi" class="form-control" placeholder="Select Mandi" list="mandiList" aria-label="Mandi Name" required>
+          <datalist id="mandiList"></datalist>
+          <div class="error-message" id="mandiError"></div>
+        </div>
+        <div class="col-md-3">
+          <input type="text" id="searchInput" class="form-control" placeholder="Search..." aria-label="Search">
+        </div>
+      </div>
+
+      <!-- Export Buttons -->
+      <div class="row mb-3">
+        <div class="col-auto">
+          <button id="downloadExcel" class="btn btn-success" aria-label="Download Excel"><i class="bi bi-file-excel"></i> Download Excel</button>
+          <button id="downloadCSV" class="btn btn-info" aria-label="Download CSV"><i class="bi bi-file-csv"></i> Download CSV</button>
+          <button id="toggleGrouped" class="btn btn-warning" aria-label="Toggle Grouped View"><i class="bi bi-list-ul"></i> Toggle Grouped View</button>
+          <button id="viewLastChanges" class="btn btn-secondary" aria-label="View Last Changes"><i class="bi bi-clock-history"></i> View Last Changes</button>
+        </div>
+      </div>
+
+      <!-- Form for Adding/Updating Rates -->
+      <form id="mandiRateForm" action="/mandi-rates/add" method="POST">
+        <input type="hidden" name="state" id="formState">
+        <input type="hidden" name="mandi" id="formMandi">
+        <table class="table table-bordered" id="mandiRateTable">
+          <thead>
+            <tr>
+              <th>Sl No</th>
+              <th>Mandi Name</th>
+              <th>Address (State/Mandi)</th>
+              <th>Type</th>
+              <th>Commodity</th>
+              <th>Min Price</th>
+              <th>Max Price</th>
+              <th>Est. Qty</th>
+              <th>Last Updated</th>
+              <th>Trend</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="mandiRateRows">
+            <!-- Data rows will be loaded via AJAX -->
+            <!-- ADD ROW -->
+            <tr class="addRow">
+              <td class="sno"></td>
+              <td>
+                <input type="text" class="form-control addMandiName" value="" readonly aria-label="Mandi Name">
+              </td>
+              <td>
+                <input type="text" class="form-control addAddress" value="" readonly aria-label="Address">
+              </td>
+              <td>
+                <select name="types[]" class="form-select type-input" aria-label="Type" required>
+                  <option value="">Select Type</option>
+                  <option value="sabji">Sabji</option>
+                  <option value="fruit">Fruit</option>
+                </select>
+                <div class="error-message" data-error="type"></div>
+              </td>
+              <td>
+                <input type="text" name="commodity_ids[]" class="form-control commodity-input" list="commodityList" aria-label="Commodity" required>
+                <datalist id="commodityList">
+                  <% commodities.forEach(com => { %>
+                    <option value="<%= com.name %>">
+                  <% }) %>
+                </datalist>
+                <div class="error-message" data-error="commodity"></div>
+              </td>
+              <td>
+                <input type="number" name="minrates[]" class="form-control minrate-input" min="0" step="0.01" aria-label="Min Price" required>
+                <div class="error-message" data-error="minrate"></div>
+              </td>
+              <td>
+                <input type="number" name="maxrates[]" class="form-control maxrate-input" min="0" step="0.01" aria-label="Max Price" required>
+                <div class="error-message" data-error="maxrate"></div>
+              </td>
+              <td>
+                <input type="number" name="arrivals[]" class="form-control arrival-input" min="0" step="0.01" aria-label="Estimated Quantity">
+                <div class="error-message" data-error="arrival"></div>
+              </td>
+              <td>-</td>
+              <td></td>
+              <td>
+                <button type="button" class="btn btn-success addRowBtn" aria-label="Add Row"><i class="bi bi-plus-circle"></i></button>
+                <button type="button" class="btn btn-danger removeRowBtn" style="display:none;" aria-label="Remove Row"><i class="bi bi-x-circle"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="error-message" id="formError"></div>
+        <button type="submit" class="btn btn-success" id="saveAllBtn" aria-label="Save All">Save All</button>
+        <button type="button" class="btn btn-info" id="testForm" aria-label="Test Form">Test Form</button>
+      </form>
+    </div>
+
+    <!-- Last Changes Modal -->
+    <div class="modal fade" id="lastChangesModal" tabindex="-1" aria-labelledby="lastChangesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="lastChangesModalLabel">Last Changes in Mandi Rates</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <select id="changesDays" class="form-select mb-3" aria-label="Time Period">
+              <option value="">All Time</option>
+              <option value="1">Last 1 Day</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
+            <table class="table table-bordered" id="changesTable">
+              <thead>
+                <tr>
+                  <th>Sl No</th>
+                  <th>Mandi Name</th>
+                  <th>Address</th>
+                  <th>Commodity</th>
+                  <th>Type</th>
+                  <th>Min Price</th>
+                  <th>Max Price</th>
+                  <th>Est. Qty</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody id="changesRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="historyTitle">Price History</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Min Price</th>
+                  <th>Max Price</th>
+                  <th>Est. Qty</th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody id="historyRows"></tbody>
+            </table>
+            <div class="chart-wrap">
+              <canvas id="priceChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <script>
+      let historyChart;
+      document.addEventListener("DOMContentLoaded", function() {
+        const filterState = document.getElementById("filterState");
+        const filterMandi = document.getElementById("filterMandi");
+        const searchInput = document.getElementById("searchInput");
+        const mandiRateRows = document.getElementById("mandiRateRows");
+        const mandiRateForm = document.getElementById("mandiRateForm");
+        const toggleGrouped = document.getElementById("toggleGrouped");
+        const testFormBtn = document.getElementById("testForm");
+        let mandis = [];
+        let isGrouped = false;
+
+        // Test form values
+        testFormBtn.addEventListener('click', () => {
+          const formDataObj = {
+            state: document.getElementById("formState").value || filterState.value,
+            mandi: document.getElementById("formMandi").value,
+            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value),
+            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
+            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
+            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
+          };
+          console.log('Test Form Data:', JSON.stringify(formDataObj, null, 2));
+        });
+
+        // Form submission with JSON
+        mandiRateForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const formDataObj = {
+            state: document.getElementById("formState").value || filterState.value,
+            mandi: document.getElementById("formMandi").value,
+            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value),
+            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
+            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
+            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
+          };
+          console.log('JSON being sent:', JSON.stringify(formDataObj, null, 2));
+
+          // Validate form inputs
+          document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+          let isValid = true;
+
+          if (!formDataObj.state) {
+            document.getElementById('stateError').textContent = 'Please select a state.';
+            isValid = false;
+          }
+          if (!formDataObj.mandi) {
+            document.getElementById('mandiError').textContent = 'Please enter a mandi name.';
+            isValid = false;
+          }
+          formDataObj.types.forEach((type, i) => {
+            if (!type.trim()) {
+              document.querySelectorAll('select[name="types[]"]')[i].nextElementSibling.textContent = `Please select a type at row ${i + 1}.`;
+              isValid = false;
+            }
+          });
+          formDataObj.commodity_ids.forEach((commodity, i) => {
+            if (!commodity.trim()) {
+              document.querySelectorAll('input[name="commodity_ids[]"]')[i].nextElementSibling.nextElementSibling.textContent = `Please enter a commodity at row ${i + 1}.`;
+              isValid = false;
+            }
+            if (!formDataObj.minrates[i] || isNaN(formDataObj.minrates[i]) || Number(formDataObj.minrates[i]) < 0) {
+              document.querySelectorAll('input[name="minrates[]"]')[i].nextElementSibling.textContent = `Please enter a valid min price at row ${i + 1}.`;
+              isValid = false;
+            }
+            if (!formDataObj.maxrates[i] || isNaN(formDataObj.maxrates[i]) || Number(formDataObj.maxrates[i]) < 0) {
+              document.querySelectorAll('input[name="maxrates[]"]')[i].nextElementSibling.textContent = `Please enter a valid max price at row ${i + 1}.`;
+              isValid = false;
+            }
+            if (formDataObj.arrivals[i] && (isNaN(formDataObj.arrivals[i]) || Number(formDataObj.arrivals[i]) < 0)) {
+              document.querySelectorAll('input[name="arrivals[]"]')[i].nextElementSibling.textContent = `Please enter a valid quantity at row ${i + 1}.`;
+              isValid = false;
+            }
+          });
+
+          if (!isValid) return;
+
+          fetch('/mandi-rates/add', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(formDataObj)
+          })
+          .then(res => {
+            console.log('Response status:', res.status);
+            if (!res.ok) return res.json().then(err => { throw new Error(err.error || `HTTP error! status: ${res.status}`); });
+            return res.text(); // Expect redirect
+          })
+          .then(data => {
+            console.log('Response data:', data);
+            window.location.href = '/mandi-rates';
+          })
+          .catch(error => {
+            console.error('Error submitting form:', error);
+            document.getElementById('formError').textContent = error.message || 'Failed to add mandi rate. Please try again.';
+          });
+        });
+
+        // State filter with enhanced debugging
+        filterState.addEventListener("change", async function() {
+          const stateId = this.value;
+          document.getElementById("formState").value = stateId;
+          document.getElementById('stateError').textContent = '';
+          filterMandi.value = '';
+          document.getElementById("formMandi").value = '';
+          document.getElementById('mandiError').textContent = '';
+
+          if (!stateId) {
+            mandis = [];
+            document.getElementById('mandiList').innerHTML = '';
+            loadTable();
+            updateAddRowFields();
+            console.log('No state selected, cleared mandi list');
+            return;
+          }
+
+          console.log('Fetching mandis for state:', stateId);
+          try {
+            const res = await fetch(`/mandi-rates/mandis/${stateId}`);
+            console.log('Fetch response status:', res.status);
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.error || `HTTP error! status: ${res.status}`);
+            }
+            mandis = await res.json();
+            console.log('Received mandis:', JSON.stringify(mandis, null, 2));
+            const datalist = document.getElementById('mandiList');
+            datalist.innerHTML = '';
+            if (mandis.length === 0) {
+              console.warn('No mandis returned for state:', stateId);
+              document.getElementById('mandiError').textContent = 'No mandis available for this state.';
+            } else {
+              mandis.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.name;
+                opt.textContent = m.name;
+                datalist.appendChild(opt);
+              });
+              console.log('Updated datalist with', mandis.length, 'options');
+              console.log('Datalist HTML:', datalist.innerHTML);
+            }
+            loadTable();
+            updateAddRowFields();
+          } catch (error) {
+            console.error('Error fetching mandis:', error);
+            document.getElementById('stateError').textContent = `Failed to load mandis: ${error.message}`;
+          }
+        });
+
+        // Mandi filter with validation
+        filterMandi.addEventListener("input", function() {
+          const mandiName = this.value.trim();
+          document.getElementById("formMandi").value = mandiName;
+          document.getElementById('mandiError').textContent = mandiName ? '' : 'Please enter a mandi name from the list.';
+          console.log('Mandi input:', mandiName, 'Valid:', mandis.some(m => m.name.toLowerCase() === mandiName.toLowerCase()));
+          loadTable();
+          updateAddRowFields();
+        });
+
+        filterMandi.addEventListener("change", function() {
+          const mandiName = this.value.trim();
+          document.getElementById("formMandi").value = mandiName;
+          document.getElementById('mandiError').textContent = mandiName && mandis.some(m => m.name.toLowerCase() === mandiName.toLowerCase()) ? '' : 'Please select a valid mandi from the list.';
+          console.log('Mandi changed:', mandiName, 'Valid:', mandis.some(m => m.name.toLowerCase() === mandiName.toLowerCase()));
+          loadTable();
+          updateAddRowFields();
+        });
+
+        // Debounced search
+        searchInput.addEventListener("input", debounce(loadTable, 300));
+
+        // Toggle grouped view
+        toggleGrouped.addEventListener("click", function() {
+          isGrouped = !isGrouped;
+          toggleGrouped.textContent = isGrouped ? "Toggle Flat View" : "Toggle Grouped View";
+          loadTable();
+        });
+
+        // Debounce function
+        function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        }
+
+        // Load table data
+        function loadTable() {
+          const state = filterState.value;
+          const mandi = filterMandi.value;
+          const search = searchInput.value;
+          fetch(`/mandi-rates/search?state=${state}&mandi=${encodeURIComponent(mandi)}&search=${encodeURIComponent(search)}`)
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              return res.json();
+            })
+            .then(rows => {
+              document.querySelectorAll(".dataRow, .group-header-state, .group-header-mandi").forEach(r => r.remove());
+              let visibleRows = [];
+              let sno = 1;
+              rows.forEach(row => {
+                const trendIcon = row.difference > 0 ? 'up' : row.difference < 0 ? 'down' : 'neutral';
+                const arrow = row.difference > 0 ? 'up' : row.difference < 0 ? 'down' : 'right';
+                const tr = document.createElement('tr');
+                tr.classList.add('dataRow');
+                tr.dataset.state = row.stateId;
+                tr.dataset.mandi = row.mandi;
+                tr.dataset.mandirateid = row.mandirateid;
+                tr.dataset.commodity = row.commodity;
+                tr.innerHTML = `
+                  <td class="sno">${sno++}</td>
+                  <td>${row.mandi}</td>
+                  <td><span>${row.stateName}</span> / <span>${row.mandi}</span></td>
+                  <td>${row.type}</td>
+                  <td class="commodity-cell"><span class="cell-text">${row.commodity}</span></td>
+                  <td class="editable"><span class="cell-text">${row.minrate}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.minrate}" style="display:none;" aria-label="Min Price" required></td>
+                  <td class="editable"><span class="cell-text">${row.maxrate}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.maxrate}" style="display:none;" aria-label="Max Price" required></td>
+                  <td class="editable"><span class="cell-text">${row.arrival}</span><input type="number" class="form-control cell-input arrival-input" min="0" step="0.01" value="${row.arrival}" style="display:none;" aria-label="Estimated Quantity"></td>
+                  <td><span class="last-updated">${row.updated}</span></td>
+                  <td class="trend-${trendIcon}">${row.difference} <i class="bi bi-arrow-${arrow}"></i></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-primary editRowBtn" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></button>
+                    <button type="button" class="btn btn-sm btn-success saveRowBtn" style="display:none;" title="Update" aria-label="Update"><i class="bi bi-check2"></i></button>
+                    <button type="button" class="btn btn-sm btn-secondary cancelRowBtn" style="display:none;" title="Cancel" aria-label="Cancel"><i class="bi bi-x"></i></button>
+                    <button type="button" class="btn btn-sm btn-info viewHistoryBtn" title="View History" aria-label="View History"><i class="bi bi-graph-up"></i></button>
+                    <form action="/mandi-rates/delete-commodity/${row.mandirateid}/${encodeURIComponent(row.commodity)}" method="POST" style="display:inline;">
+                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this commodity?')" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </td>
+                `;
+                visibleRows.push(tr);
+              });
+
+              if (!isGrouped) {
+                visibleRows.forEach(row => mandiRateRows.appendChild(row));
+              } else {
+                visibleRows.sort((a, b) => {
+                  const ka = getGroupKeys(a);
+                  const kb = getGroupKeys(b);
+                  return ka.stateName.localeCompare(kb.stateName) ||
+                         ka.mandiName.localeCompare(kb.mandiName) ||
+                         ka.commodity.localeCompare(kb.commodity);
+                });
+
+                const groups = visibleRows.reduce((acc, row) => {
+                  const { stateName, mandiName } = getGroupKeys(row);
+                  if (!acc[stateName]) acc[stateName] = {};
+                  if (!acc[stateName][mandiName]) acc[stateName][mandiName] = [];
+                  acc[stateName][mandiName].push(row);
+                  return acc;
+                }, {});
+
+                for (let stateName in groups) {
+                  const stateHeader = document.createElement("tr");
+                  stateHeader.classList.add("group-header-state");
+                  stateHeader.innerHTML = `<td colspan="11" style="cursor: pointer;"><strong>State: ${stateName}</strong></td>`;
+                  mandiRateRows.appendChild(stateHeader);
+
+                  for (let mandiName in groups[stateName]) {
+                    const mandiHeader = document.createElement("tr");
+                    mandiHeader.classList.add("group-header-mandi");
+                    mandiHeader.innerHTML = `<td colspan="11" style="cursor: pointer;"><em>Mandi: ${mandiName}</em></td>`;
+                    mandiRateRows.appendChild(mandiHeader);
+
+                    groups[stateName][mandiName].forEach(row => mandiRateRows.appendChild(row));
+                  }
+                }
+              }
+
+              updateAddRowSerials();
+            }).catch(error => {
+              console.error('Error loading table:', error);
+              alert('Failed to load mandi rates. Please try again.');
+            });
+        }
+
+        // Get group keys for sorting
+        function getGroupKeys(row) {
+          const addressSpans = row.querySelector('td:nth-child(3)').querySelectorAll('span');
+          const stateName = addressSpans[0].textContent.trim();
+          const mandiName = addressSpans[1].textContent.trim();
+          const commodity = row.querySelector('td:nth-child(5) .cell-text').textContent.trim();
+          return { stateName, mandiName, commodity };
+        }
+
+        // Collapsible groups
+        mandiRateRows.addEventListener('click', function(e) {
+          const stateHeader = e.target.closest('.group-header-state td');
+          const mandiHeader = e.target.closest('.group-header-mandi td');
+          if (stateHeader || mandiHeader) {
+            let nextRow = e.target.closest('tr').nextElementSibling;
+            while (nextRow && !nextRow.classList.contains('group-header-state') && !nextRow.classList.contains('group-header-mandi')) {
+              nextRow.style.display = nextRow.style.display === 'none' ? '' : 'none';
+              nextRow = nextRow.nextElementSibling;
+            }
+          }
+        });
+
+        // Update add row fields
+        function updateAddRowFields() {
+          const state = filterState.value;
+          const mandi = filterMandi.value;
+          const stateName = state ? filterState.options[filterState.selectedIndex]?.text : '';
+          document.querySelectorAll(".addMandiName").forEach(el => el.value = mandi);
+          document.querySelectorAll(".addAddress").forEach(el =>
+            el.value = [stateName, mandi].filter(Boolean).join(' / ')
+          );
+        }
+
+        // Add/remove dynamic rows
+        mandiRateRows.addEventListener("click", function(e) {
+          if (e.target.closest(".addRowBtn")) {
+            const tbody = mandiRateRows;
+            const addRow = e.target.closest(".addRow");
+            const newRow = addRow.cloneNode(true);
+            newRow.querySelectorAll("input").forEach(el => el.value = "");
+            newRow.querySelectorAll("select").forEach(el => el.value = "");
+            newRow.querySelectorAll(".error-message").forEach(el => el.textContent = "");
+            newRow.querySelector(".addRowBtn").style.display = "none";
+            newRow.querySelector(".removeRowBtn").style.display = "";
+            tbody.insertBefore(newRow, addRow);
+            updateAddRowSerials();
+          }
+          if (e.target.closest(".removeRowBtn")) {
+            e.target.closest("tr").remove();
+            updateAddRowSerials();
+          }
+        });
+
+        // Input validation
+        mandiRateRows.addEventListener("input", function(e) {
+          const target = e.target;
+          const errorEl = target.nextElementSibling?.classList.contains('error-message') ? target.nextElementSibling : target.nextElementSibling?.nextElementSibling;
+          if (target.classList.contains('type-input')) {
+            errorEl.textContent = target.value.trim() ? '' : 'Please select a type.';
+          }
+          if (target.classList.contains('commodity-input')) {
+            errorEl.textContent = target.value.trim() ? '' : 'Please enter a commodity.';
+          }
+          if (target.classList.contains('minrate-input')) {
+            errorEl.textContent = (target.value && !isNaN(target.value) && Number(target.value) >= 0) ? '' : 'Please enter a valid min price.';
+          }
+          if (target.classList.contains('maxrate-input')) {
+            errorEl.textContent = (target.value && !isNaN(target.value) && Number(target.value) >= 0) ? '' : 'Please enter a valid max price.';
+          }
+          if (target.classList.contains('arrival-input')) {
+            errorEl.textContent = (target.value && (isNaN(target.value) || Number(target.value) < 0)) ? 'Please enter a valid quantity.' : '';
+          }
+        });
+
+        // Inline edit
+        mandiRateRows.addEventListener("click", function(e) {
+          if (e.target.closest(".editRowBtn")) {
+            document.querySelectorAll("#mandiRateRows .dataRow").forEach(row => {
+              row.querySelectorAll(".editable .cell-text").forEach(t => t.style.display = "");
+              row.querySelectorAll(".editable .cell-input").forEach(i => i.style.display = "none");
+              row.querySelector(".editRowBtn").style.display = "";
+              row.querySelector(".saveRowBtn").style.display = "none";
+              row.querySelector(".cancelRowBtn").style.display = "none"
+            });
+            const tr = e.target.closest("tr.dataRow");
+            tr.querySelectorAll(".editable .cell-text").forEach(t => t.style.display = "none");
+            tr.querySelectorAll(".editable .cell-input").forEach(i => i.style.display = "");
+            tr.querySelector(".editRowBtn").style.display = "none";
+            tr.querySelector(".saveRowBtn").style.display = "";
+            tr.querySelector(".cancelRowBtn").style.display = "";
+          }
+          if (e.target.closest(".cancelRowBtn")) {
+            const tr = e.target.closest("tr.dataRow");
+            tr.querySelectorAll(".editable .cell-text").forEach(t => t.style.display = "");
+            tr.querySelectorAll(".editable .cell-input").forEach(i => {
+              i.style.display = "none";
+              i.value = i.previousElementSibling.textContent;
+            });
+            tr.querySelector(".editRowBtn").style.display = "";
+            tr.querySelector(".saveRowBtn").style.display = "none";
+            tr.querySelector(".cancelRowBtn").style.display = "none";
+          }
+          if (e.target.closest(".saveRowBtn")) {
+            const tr = e.target.closest("tr.dataRow");
+            const mandiRateId = tr.dataset.mandirateid;
+            const commodity = tr.dataset.commodity;
+            const minrate = tr.querySelectorAll(".cell-input")[0].value;
+            const maxrate = tr.querySelectorAll(".cell-input")[1].value;
+            const arrival = tr.querySelectorAll(".cell-input")[2].value;
+            if (!minrate || !maxrate || isNaN(minrate) || isNaN(maxrate) || Number(minrate) < 0 || Number(maxrate) < 0) {
+              alert('Please enter valid min and max prices.');
+              return;
+            }
+            if (arrival && (isNaN(arrival) || Number(arrival) < 0)) {
+              alert('Please enter a valid quantity.');
+              return;
+            }
+            fetch(`/mandi-rates/add-price/${mandiRateId}/${encodeURIComponent(commodity)}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ minrate, maxrate, arrival })
+            })
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              if (data.error) {
+                alert(data.error);
+              } else {
+                window.location.reload();
+              }
+            })
+            .catch(error => {
+              console.error('Error updating price:', error);
+              alert('Failed to update price. Please try again.');
+            });
+          }
+          if (e.target.closest(".viewHistoryBtn")) {
+            const tr = e.target.closest("tr.dataRow");
+            const mandiRateId = tr.dataset.mandirateid;
+            const commodity = tr.dataset.commodity;
+            fetch(`/mandi-rates/history/${mandiRateId}/${encodeURIComponent(commodity)}`)
+              .then(res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+              })
+              .then(data => {
+                if (data.error) {
+                  alert(data.error);
+                  return;
+                }
+                document.getElementById('historyTitle').textContent = `Price History for ${data.commodity} in ${data.mandi}, ${data.state}`;
+                const rows = document.getElementById('historyRows');
+                rows.innerHTML = '';
+                data.prices.forEach(p => {
+                  const tr = document.createElement('tr');
+                  tr.innerHTML = `
+                    <td>${new Date(p.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                    <td>${p.minrate}</td>
+                    <td>${p.maxrate}</td>
+                    <td>${p.arrival}</td>
+                    <td>${p.trend}</td>
+                  `;
+                  rows.appendChild(tr);
+                });
+                if (historyChart) historyChart.destroy();
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                historyChart = new Chart(ctx, {
+                  type: 'line',
+                  data: {
+                    datasets: [
+                      {
+                        label: 'Min Price',
+                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.minrate })),
+                        borderColor: '#4e54c8',
+                        fill: false
+                      },
+                      {
+                        label: 'Max Price',
+                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.maxrate })),
+                        borderColor: '#28a745',
+                        fill: false
+                      }
+                    ]
+                  },
+                  options: {
+                    scales: {
+                      x: {
+                        type: 'time',
+                        time: {
+                          unit: 'day',
+                          displayFormats: {
+                            day: 'MMM D, YYYY'
+                          }
+                        }
+                      },
+                      y: {
+                        beginAtZero: false,
+                        title: {
+                          display: true,
+                          text: 'Price'
+                        }
+                      }
+                    },
+                    plugins: {
+                      zoom: {
+                        zoom: {
+                          wheel: { enabled: true },
+                          pinch: { enabled: true },
+                          mode: 'xy'
+                        },
+                        pan: {
+                          enabled: true,
+                          mode: 'xy'
+                        }
+                      }
+                    }
+                  }
+                });
+                $('#historyModal').modal('show');
+              })
+              .catch(error => {
+                console.error('Error fetching history:', error);
+                alert('Failed to load history. Please try again.');
+              });
+          }
+        });
+
+        // Export buttons
+        document.getElementById('downloadCSV').addEventListener('click', function() {
+          const state = filterState.value;
+          const mandi = filterMandi.value;
+          const search = searchInput.value;
+          const query = new URLSearchParams({ state, mandi, search }).toString();
+          window.location.href = `/mandi-rates/export/csv?${query}`;
+        });
+
+        document.getElementById('downloadExcel').addEventListener('click', function() {
+          const state = filterState.value;
+          const mandi = filterMandi.value;
+          const search = searchInput.value;
+          const query = new URLSearchParams({ state, mandi, search }).toString();
+          window.location.href = `/mandi-rates/export/excel?${query}`;
+        });
+
+        // View Last Changes
+        document.getElementById('viewLastChanges').addEventListener('click', function() {
+          $('#lastChangesModal').modal('show');
+          loadChanges();
+        });
+
+        document.getElementById('changesDays').addEventListener('change', loadChanges);
+
+        function loadChanges() {
+          const days = document.getElementById('changesDays').value;
+          const query = new URLSearchParams({ days }).toString();
+          fetch(`/mandi-rates/report?${query}`)
+            .then(res => {
+              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              return res.json();
+            })
+            .then(data => {
+              data.sort((a, b) => {
+                if (a.stateName !== b.stateName) return a.stateName.localeCompare(b.stateName);
+                if (a.mandiName !== b.mandiName) return a.mandiName.localeCompare(b.mandiName);
+                return new Date(b.lastUpdated) - new Date(a.lastUpdated);
+              });
+
+              const groups = {};
+              data.forEach(item => {
+                if (!groups[item.stateName]) groups[item.stateName] = {};
+                if (!groups[item.stateName][item.mandiName]) groups[item.stateName][item.mandiName] = [];
+                groups[item.stateName][item.mandiName].push(item);
+              });
+
+              const rows = document.getElementById('changesRows');
+              rows.innerHTML = '';
+              let sno = 1;
+
+              for (const stateName in groups) {
+                const stateTr = document.createElement('tr');
+                stateTr.innerHTML = `<td colspan="9"><strong>State: ${stateName}</strong></td>`;
+                rows.appendChild(stateTr);
+
+                for (const mandi in groups[stateName]) {
+                  const mandiTr = document.createElement('tr');
+                  mandiTr.innerHTML = `<td colspan="9">Mandi: ${mandi}</td>`;
+                  rows.appendChild(mandiTr);
+
+                  groups[stateName][mandi].forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                      <td>${sno++}</td>
+                      <td>${item.mandiName}</td>
+                      <td>${item.address}</td>
+                      <td>${item.commodity}</td>
+                      <td>${item.type}</td>
+                      <td>${item.minimum}</td>
+                      <td>${item.maximum}</td>
+                      <td>${item.estimatedArrival}</td>
+                      <td>${item.lastUpdated}</td>
+                    `;
+                    rows.appendChild(tr);
+                  });
+                }
+              }
+            })
+            .catch(error => {
+              console.error('Error loading changes:', error);
+              alert('Failed to load changes. Please try again.');
+            });
+        }
+
+        function updateAddRowSerials() {
+          let idx = document.querySelectorAll("#mandiRateRows .dataRow").length + 1;
+          document.querySelectorAll("#mandiRateRows .addRow").forEach((row, i) => {
+            row.querySelector(".sno").textContent = idx + i;
+          });
+        }
+
+        updateAddRowFields();
+        loadTable();
+      });
+    </script>
+    <script>
+    // Collapsible Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const collapseBtn = document.getElementById('collapseBtn');
+    const mainContent = document.getElementById('mainContent');
+    let collapsed = false;
+    collapseBtn.onclick = function() {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      mainContent.style.marginLeft = collapsed ? '65px' : '240px';
+      document.querySelector('.navbar').style.marginLeft = collapsed ? '65px' : '240px';
+    };
+  </script>
+</body>
+</html>

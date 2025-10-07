@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MandiLink Daily Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: #f5f7fa; }
+    .sidebar {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #fff;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      width: 240px;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s;
+    }
+    .sidebar.collapsed {
+      width: 65px !important;
+      min-width: 65px !important;
+    }
+    .sidebar .sidebar-header {
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 1rem 0 0.5rem 0;
+      text-align: center;
+      letter-spacing: 2px;
+      position: relative;
+    }
+    .sidebar .logo {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      margin-bottom: 0.5rem;
+      margin-top: 1rem;
+    }
+    .sidebar .nav-link {
+      color: #fff !important;
+      font-weight: 500;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1rem;
+    }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    .sidebar .nav-link i {
+      font-size: 1.3rem;
+      min-width: 26px;
+      text-align: center;
+    }
+    .sidebar .collapse-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 2;
+      transition: color 0.2s;
+    }
+    .sidebar .collapse-btn:focus {
+      outline: none;
+    }
+    .sidebar.collapsed .sidebar-header,
+    .sidebar.collapsed .logo,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .mt-auto {
+      display: none !important;
+    }
+    .sidebar.collapsed .nav-link {
+      justify-content: center;
+      padding-left: 0;
+    }
+    .sidebar.collapsed .nav-link i {
+      font-size: 1.7rem;
+    }
+    .main-content {
+      margin-left: 240px;
+      padding: 2rem 2rem 1rem 2rem;
+      transition: margin-left 0.3s;
+    }
+    @media (max-width: 768px) {
+      .main-content {
+        margin-left: 65px !important;
+        padding: 1rem;
+      }
+      .sidebar {
+        width: 65px !important;
+        min-width: 65px !important;
+      }
+      .sidebar .sidebar-header,
+      .sidebar .logo,
+      .sidebar .nav-link span,
+      .sidebar .mt-auto {
+        display: none !important;
+      }
+      .sidebar .nav-link {
+        justify-content: center;
+        padding-left: 0;
+      }
+    }
+    .navbar { background: #4e54c8; margin-left:240px; transition: margin-left 0.3s;}
+    .sidebar.collapsed ~ .navbar { margin-left:65px; }
+    .navbar-brand, .nav-link { color: #fff !important; }
+    h2 { margin-top: 1.5rem; color: #4e54c8; }
+    .btn-warning { background: #FFD700; border-color: #FFD700; color: #222; font-weight: bold; }
+    .btn-success { font-weight: bold; }
+    .table thead th { background: #EFEF39; color: #333; }
+    .table tbody tr:nth-child(even) { background: #fff; }
+    .table tbody tr:nth-child(odd) { background: #f7f7f7; }
+    .history-btn { cursor:pointer; color:#4e54c8; }
+    .chart-wrap { height: 350px; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar with logo -->
+  <div class="sidebar" id="sidebar">
+    <button class="collapse-btn" id="collapseBtn" title="Collapse/Expand Sidebar"><i class="bi bi-list"></i></button>
+    <div class="sidebar-header">
+      
+      Mandi Panel
+    </div>
+ <nav class="nav flex-column px-3 mt-2">
+  <a href="/" class="nav-link active"><i class="bi bi-house-door"></i> <span>Reports</span></a>
+  <a href="/mandi-rates" class="nav-link"><i class="bi bi-plus-square"></i> <span>Add MandiRates</span></a>
+  <a href="/mandi" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> <span>Add Mandi</span></a>
+  <a href="/commodities" class="nav-link"><i class="bi bi-clock-history"></i> <span>Commodities</span></a>
+  <a href="/states" class="nav-link"><i class="bi bi-gear"></i> <span>States</span></a>
+  <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
+</nav>
+    <div class="mt-auto px-3 pb-4 small text-center" style="opacity:0.7;">
+      <i class="bi bi-person-circle"></i> Admin Panel
+    </div>
+  </div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand" href="#">MandiLink</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-home"></i> Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-chart-line"></i> Analytics</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="main-content" id="mainContent">
+    <h2>Daily Mandi Report</h2>
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <select id="filterState" class="form-select">
+          <option value="">All States</option>
+          <% states.forEach(state => { %>
+            <option value="<%= state._id %>"><%= state.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="date" id="filterDate" class="form-control" value="<%= new Date().toISOString().slice(0,10) %>">
+      </div>
+      <div class="col-md-3">
+        <button id="downloadPDF" class="btn btn-warning w-100">
+          <i class="fas fa-file-pdf"></i> Download Filtered PDF
+        </button>
+      </div>
+      <div class="col-md-3">
+        <button id="downloadAllPDF" class="btn btn-success w-100">
+          <i class="fas fa-file-pdf"></i> Download All PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered" id="reportTable">
+        <thead>
+          <tr>
+            <th>City/Mandi</th>
+            <th>State</th>
+            <th>Item</th>
+            <th>Rate</th>
+            <th>Arrival</th>
+            <th>Type</th>
+            <th>History</th>
+          </tr>
+        </thead>
+        <tbody id="reportRows">
+          <!-- JS will fill this table -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="historyTitle">Price History</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Min Price</th>
+                <th>Max Price</th>
+                <th>Est. Qty</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody id="historyRows">
+            </tbody>
+          </table>
+          <div class="chart-wrap mt-4">
+            <canvas id="priceChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Required JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.0/dist/chartjs-chart-financial.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <script>
+    // Collapsible Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const collapseBtn = document.getElementById('collapseBtn');
+    const mainContent = document.getElementById('mainContent');
+    let collapsed = false;
+    collapseBtn.onclick = function() {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      mainContent.style.marginLeft = collapsed ? '65px' : '240px';
+      document.querySelector('.navbar').style.marginLeft = collapsed ? '65px' : '240px';
+    };
+
+    let historyChart = null;
+    document.addEventListener('DOMContentLoaded', function () {
+      const filterState = document.getElementById('filterState');
+      const filterDate = document.getElementById('filterDate');
+      const downloadPDFBtn = document.getElementById('downloadPDF');
+      const downloadAllPDFBtn = document.getElementById('downloadAllPDF');
+
+      // Download filtered PDF
+      downloadPDFBtn.addEventListener('click', function () {
+        const state = filterState.value;
+        const date = filterDate.value;
+        const query = new URLSearchParams({ state, date }).toString();
+        window.location.href = `/mandirates/export/beautiful-multi-pdf?${query}`;
+      });
+
+      // Download ALL PDF
+      downloadAllPDFBtn.addEventListener('click', function () {
+        window.location.href = `/mandirates/export/all-beautiful-multi-pdf`;
+      });
+
+      // Table preview AJAX
+      function loadPreview() {
+        const state = filterState.value;
+        const date = filterDate.value;
+        fetch(`/mandirates/beautiful-preview?state=${state}&date=${date}`)
+          .then(res => res.json())
+          .then(data => {
+            const tbody = document.getElementById('reportRows');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+              tbody.innerHTML = `<tr><td colspan="7" class="text-center">No data available</td></tr>`;
+              return;
+            }
+            data.forEach(row => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${row.mandi}</td>
+                <td>${row.state}</td>
+                <td>${row.item}</td>
+                <td>${row.rate}</td>
+                <td>${row.arrival}</td>
+                <td>${row.type}</td>
+                <td><span class="history-btn" data-mandi="${row.mandi}" data-commodity="${row.item}" data-state="${row.state}"><i class="bi bi-graph-up"></i></span></td>
+              `;
+              tbody.appendChild(tr);
+            });
+          });
+      }
+      filterState.addEventListener('change', loadPreview);
+      filterDate.addEventListener('change', loadPreview);
+      loadPreview();
+
+      // Show history modal and chart
+      document.getElementById('reportRows').addEventListener('click', function(e) {
+        const btn = e.target.closest('.history-btn');
+        if (!btn) return;
+        const mandi = btn.getAttribute('data-mandi');
+        const commodity = btn.getAttribute('data-commodity');
+        const state = btn.getAttribute('data-state');
+        fetch(`/mandirates/history/${encodeURIComponent(mandi)}/${encodeURIComponent(commodity)}?state=${encodeURIComponent(state)}`)
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById('historyTitle').textContent = `Price History for ${data.commodity} in ${data.mandi}, ${data.state}`;
+            const rows = document.getElementById('historyRows');
+            rows.innerHTML = '';
+            data.prices.forEach(p => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${new Date(p.date).toLocaleString('en-IN')}</td>
+                <td>${p.minrate}</td>
+                <td>${p.maxrate}</td>
+                <td>${p.arrival}</td>
+                <td>${p.trend}</td>
+              `;
+              rows.appendChild(tr);
+            });
+            if (historyChart) historyChart.destroy();
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            historyChart = new Chart(ctx, {
+              type: 'candlestick',
+              data: {
+                datasets: [{
+                  label: 'Price Range',
+                  data: data.prices.map(p => ({
+                    x: new Date(p.date),
+                    o: p.minrate,
+                    h: p.maxrate,
+                    l: p.minrate,
+                    c: p.maxrate
+                  }))
+                }]
+              },
+              options: {
+                scales: {
+                  x: {
+                    type: 'time',
+                    time: { unit: 'day' }
+                  },
+                  y: { beginAtZero: false }
+                },
+                plugins: {
+                  zoom: {
+                    zoom: {
+                      wheel: { enabled: true },
+                      pinch: { enabled: true },
+                      mode: 'xy'
+                    },
+                    pan: {
+                      enabled: true,
+                      mode: 'xy'
+                    }
+                  }
+                }
+              }
+            });
+            const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+            modal.show();
+          });
+      });
+    });
+  </script>
+</body>
+</html>
