@@ -50,7 +50,7 @@ app.get('/mandirates/export/all-beautiful-multi-pdf', mandirateController.export
 app.get('/mandirates/history/:mandi/:commodity', mandirateController.history);
 
 // Server start
-app.listen(process.env.PORT || 3000, () => {
+app.listen(process.env.PORT || 3005, () => {
   console.log(`Server running at http://localhost:${process.env.PORT || 3000}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Database: ${process.env.DATABASE_URL || 'MANDILINK'}`);
