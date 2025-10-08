@@ -221,14 +221,17 @@
               <td>
                 <input type="text" class="form-control addAddress" value="" readonly aria-label="Address">
               </td>
-              <td>
-                <select name="types[]" class="form-select type-input" aria-label="Type" required>
-                  <option value="">Select Type</option>
-                  <option value="sabji">Sabji</option>
-                  <option value="fruit">Fruit</option>
-                </select>
-                <div class="error-message" data-error="type"></div>
-              </td>
+             <td>
+  <input 
+    type="text" 
+    name="types[]" 
+    class="form-control type-input" 
+    placeholder="Enter Type" 
+    required
+  />
+  <div class="error-message" data-error="type"></div>
+</td>
+
               <td>
                 <input type="text" name="commodity_ids[]" class="form-control commodity-input" list="commodityList" aria-label="Commodity" required>
                 <datalist id="commodityList">
@@ -355,29 +358,31 @@
         // Test form values
         testFormBtn.addEventListener('click', () => {
           const formDataObj = {
-            state: document.getElementById("formState").value || filterState.value,
-            mandi: document.getElementById("formMandi").value,
-            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value),
-            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
-            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
-            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
-            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
-          };
+  state: document.getElementById("formState").value || filterState.value,
+  mandi: document.getElementById("formMandi").value,
+  types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value), // <--- FIXED
+  commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+  minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
+  maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
+  arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
+};
+
           console.log('Test Form Data:', JSON.stringify(formDataObj, null, 2));
         });
 
         // Form submission with JSON
         mandiRateForm.addEventListener('submit', function(e) {
           e.preventDefault();
-          const formDataObj = {
-            state: document.getElementById("formState").value || filterState.value,
-            mandi: document.getElementById("formMandi").value,
-            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value),
-            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
-            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
-            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
-            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
-          };
+        const formDataObj = {
+  state: document.getElementById("formState").value || filterState.value,
+  mandi: document.getElementById("formMandi").value,
+  types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value), // <--- FIXED
+  commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+  minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
+  maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
+  arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
+};
+
           console.log('JSON being sent:', JSON.stringify(formDataObj, null, 2));
 
           // Validate form inputs

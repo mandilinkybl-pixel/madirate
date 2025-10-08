@@ -110,108 +110,186 @@ exports.exportBeautifulMultiPDF = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=mandi_report_${date || 'all'}.pdf`);
     doc.pipe(res);
 
-    const headerBgColor = '#1e3a8a'; // Deep blue
-    const headerTextColor = '#f5f5f5'; // Off-white
-    const titleColor = '#1e3a8a'; // Deep blue
-    const tableHeaderBg = '#3b82f6'; // Bright blue
-    const tableHeaderText = '#ffffff'; // White
-    const rowBgEven = '#e6f0ff'; // Light blue tint
-    const rowBgOdd = '#f0f7ff'; // Slightly lighter blue tint
-    const borderColor = '#93c5fd'; // Soft blue border
-    const borderWidth = 0.7;
-
+    // === COLORS & STYLES ===
+    const bgColor = '#e8f5e9'; // Light green background
+    const headerGradientTop = '#facc15'; // Bright yellow
+    const headerGradientBottom = '#fcd34d'; // Soft yellow
+    const headerText = '#000000';
+    const tableHeaderBg = '#facc15';
+    const tableHeaderText = '#000000';
+    const borderColor = '#a3a3a3';
+    const borderWidth = 0.6;
     const pageWidth = doc.page.width;
     const pageHeight = doc.page.height;
-    const tableColWidths = [72, 62, 64, 66, 54, 45, 55, 68];
-    const tableWidth = tableColWidths.reduce((acc, w) => acc + w, 0);
-    const marginLeft = (pageWidth - tableWidth) / 2;
-    const tableStartY = 90;
-    const rowHeight = 20;
-    const headerHeight = 28;
-    const logoPath = path.join(__dirname, '../logo.png');
 
+    const tableColWidths = [80, 80, 80, 60, 60, 60, 70];
+    const tableWidth = tableColWidths.reduce((a, b) => a + b, 0);
+    const marginLeft = (pageWidth - tableWidth) / 2;
+    const tableStartY = 130;
+    const rowHeight = 24;
+    const headerHeight = 28;
+    const logoPath = path.join(__dirname, '../image.png');
+
+    // === PAGE BACKGROUND ===
+    function drawPageBackground() {
+      doc.save();
+      doc.rect(0, 0, pageWidth, pageHeight).fill(bgColor);
+      doc.restore();
+    }
+
+    // === LOGO WATERMARK ===
     function drawLogoWatermark() {
       try {
         doc.save();
-        doc.opacity(0.15);
-        doc.image(logoPath, (pageWidth - 280) / 2, (pageHeight - 280) / 2, { width: 280, height: 290, align: 'center' });
+        doc.opacity(0.1);
+        doc.image(logoPath, (pageWidth - 300) / 2, (pageHeight - 300) / 2, { width: 300 });
         doc.opacity(1);
         doc.restore();
-      } catch (e) {
-        console.log('Watermark logo not found or failed to load:', e);
+      } catch (err) {
+        console.log('Watermark not found:', err.message);
       }
     }
 
-    function drawHeader(title) {
+    // === HEADER ===
+    function drawHeader() {
+      const gradient = doc.linearGradient(0, 0, 0, 80);
+      gradient.stop(0, headerGradientTop).stop(1, headerGradientBottom);
+      doc.rect(0, 0, pageWidth, 80).fill(gradient);
+
       try {
-        doc.image(logoPath, marginLeft - 50, 12, { width: 40, height: 40 });
+        doc.image(logoPath, 40, 10, { width: 60, height: 60 });
       } catch (e) {
-        console.log('Header logo not found or failed to load:', e);
+        console.log('Header logo missing:', e.message);
       }
-      const gradient = doc.linearGradient(0, 0, 0, 44);
-      gradient.stop(0, '#1e3a8a').stop(1, '#2a5caa');
-      doc.rect(0, 0, pageWidth, 44).fill(gradient);
-      doc.fontSize(14).fillColor(headerTextColor).font('Helvetica-Bold')
-        .text('9243019500', marginLeft, 15, { align: 'left', baseline: 'middle' });
-      doc.fontSize(14).fillColor(headerTextColor).font('Helvetica-Bold')
-        .text('MandiLink.ybl@gmail.com', pageWidth - marginLeft - 170, 15, { align: 'left', baseline: 'middle' });
-      doc.save();
-      doc.fillColor('#d1e0ff').font('Helvetica-Bold').text(title, marginLeft + 1, 49, { align: 'center', width: tableWidth });
-      doc.fillColor(titleColor).font('Helvetica-Bold').text(title, marginLeft, 48, { align: 'center', width: tableWidth });
-      doc.restore();
-      doc.moveTo(marginLeft, 72).lineTo(marginLeft + tableWidth, 72).lineWidth(1).strokeColor('#93c5fd').stroke();
-      let startY = tableStartY;
+
+      doc.fontSize(20)
+        .fillColor(headerText)
+        .font('Helvetica-Bold')
+        .text('MandiLink Update', 120, 28);
+
+      // Date or "All Records"
+      doc.fontSize(12)
+        .fillColor(headerText)
+        .text(
+          date
+            ? `Date: ${moment(date).format('DD/MM/YYYY')}`
+            : `All Records`,
+          pageWidth - 150,
+          20,
+          { align: 'left' }
+        );
+
+      // Divider line
+      doc.moveTo(marginLeft, 90)
+        .lineTo(marginLeft + tableWidth, 90)
+        .strokeColor(borderColor)
+        .lineWidth(1)
+        .stroke();
+    }
+
+    // === TABLE HEADER ===
+    function drawTableHeader() {
       let x = marginLeft;
-      doc.fontSize(12).font('Helvetica-Bold');
-      const headers = ['City/Mandi', 'State', 'Item', 'Rate', 'Arrival', 'Type', 'Trend', 'Last Updated'];
+      const headers = ['City/Mandi', 'State', 'Item', 'Rate', 'Arrival', 'Trend', 'Type'];
+
       headers.forEach((header, i) => {
-        doc.rect(x, startY, tableColWidths[i], headerHeight).fill(tableHeaderBg);
-        doc.strokeColor(borderColor).lineWidth(borderWidth).rect(x, startY, tableColWidths[i], headerHeight).stroke();
-        doc.fillColor(tableHeaderText).text(header, x + 1, startY + 5, { width: tableColWidths[i] - 2, align: 'center' });
+        doc.rect(x, tableStartY, tableColWidths[i], headerHeight)
+          .fill(tableHeaderBg)
+          .strokeColor(borderColor)
+          .lineWidth(borderWidth)
+          .stroke();
+        doc.fillColor(tableHeaderText)
+          .font('Helvetica-Bold')
+          .fontSize(11)
+          .text(header, x + 2, tableStartY + 6, {
+            width: tableColWidths[i] - 4,
+            align: 'center'
+          });
         x += tableColWidths[i];
       });
     }
 
-    const rowsPerPage = Math.floor((pageHeight - tableStartY - headerHeight - 70) / rowHeight);
+    // === RESPONSIVE TEXT FUNCTION ===
+    function drawCellText(text, x, y, width, height, align = 'center', bold = false, color = '#000') {
+      const font = bold ? 'Helvetica-Bold' : 'Helvetica';
+      doc.font(font).fontSize(10).fillColor(color);
+
+      const safeText = String(text || '').replace(/\s+/g, ' ').trim();
+
+      // Clip or wrap text
+      let displayText = safeText;
+      if (doc.widthOfString(safeText) > width - 4) {
+        let truncated = '';
+        for (let c of safeText) {
+          if (doc.widthOfString(truncated + c) > width - 8) break;
+          truncated += c;
+        }
+        displayText = truncated + '…';
+      }
+
+      doc.text(displayText, x + 2, y + 5, {
+        width: width - 4,
+        height: height - 8,
+        align,
+      });
+    }
+
+    // === MAIN CONTENT ===
+    const rowsPerPage = Math.floor((pageHeight - tableStartY - headerHeight - 100) / rowHeight);
     let pageNum = 1;
+
     for (let i = 0; i < rows.length; i += rowsPerPage) {
       if (pageNum > 1) doc.addPage();
+
+      drawPageBackground();
       drawLogoWatermark();
-      drawHeader('DAILY MANDI REPORT ' + (date ? moment(date).format('DD/MM/YY') : moment().format('DD/MM/YY')));
+      drawHeader();
+      drawTableHeader();
+
       let y = tableStartY + headerHeight;
-      doc.fontSize(11).font('Helvetica');
+
       for (let j = 0; j < rowsPerPage && (i + j) < rows.length; j++) {
-        let row = rows[i + j];
+        const row = rows[i + j];
         let x = marginLeft;
-        const rowBg = j % 2 === 0 ? rowBgEven : rowBgOdd;
-        tableColWidths.forEach((w, cidx) => {
-          doc.rect(x, y, w, rowHeight).fill(rowBg);
-          doc.strokeColor(borderColor).lineWidth(borderWidth).rect(x, y, w, rowHeight).stroke();
+
+        // Draw row borders
+        tableColWidths.forEach((w) => {
+          doc.rect(x, y, w, rowHeight)
+            .strokeColor(borderColor)
+            .lineWidth(borderWidth)
+            .stroke();
           x += w;
         });
-        x = marginLeft;
-        const trendDisplay = row.trend.value === 0 
-          ? `${row.trend.arrow} 0` 
-          : `${row.trend.arrow} ${row.trend.value > 0 ? '+' : ''}${row.trend.value}`;
-        [
+
+        // Text in cells
+        const trendDisplay = `${row.trend.arrow} ${row.trend.value > 0 ? '+' : ''}${row.trend.value || 0}`;
+        const rowData = [
           row.mandi,
           row.state,
           row.item,
           row.rate,
           row.arrival,
-          row.type,
           trendDisplay,
-          row.lastUpdated
-        ].forEach((val, cidx) => {
-          doc.fillColor(cidx === 6 ? row.trend.color : '#1e3a8a');
-          doc.font(cidx === 6 ? 'Helvetica-Bold' : 'Helvetica');
-          doc.text(String(val).replace(/[!]/g, ''), x + 1, y + 3, { width: tableColWidths[cidx] - 2, align: 'center', height: rowHeight - 4 });
-          x += tableColWidths[cidx];
+          row.type,
+        ];
+
+        x = marginLeft;
+        rowData.forEach((val, idx) => {
+          const isTrend = idx === 5;
+          const color = isTrend ? row.trend.color : '#000000';
+          drawCellText(val, x, y, tableColWidths[idx], rowHeight, 'center', isTrend, color);
+          x += tableColWidths[idx];
         });
+
         y += rowHeight;
       }
-      doc.fontSize(10).fillColor('#6b7280').text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
-      pageNum += 1;
+
+      // Footer page number
+      doc.fontSize(10)
+        .fillColor('#4b5563')
+        .text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 40, { align: 'center' });
+
+      pageNum++;
     }
 
     doc.end();
@@ -220,6 +298,8 @@ exports.exportBeautifulMultiPDF = async (req, res) => {
     res.status(500).json({ error: 'Failed to export PDF' });
   }
 };
+
+
 
 // PDF export: ALL reports (latest prices)
 exports.exportAllBeautifulMultiPDF = async (req, res) => {
@@ -231,108 +311,154 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=mandi_all_report.pdf`);
     doc.pipe(res);
 
-    const headerBgColor = '#1e3a8a'; // Deep blue
-    const headerTextColor = '#f5f5f5'; // Off-white
-    const titleColor = '#1e3a8a'; // Deep blue
-    const tableHeaderBg = '#3b82f6'; // Bright blue
-    const tableHeaderText = '#ffffff'; // White
-    const rowBgEven = '#e6f0ff'; // Light blue tint
-    const rowBgOdd = '#f0f7ff'; // Slightly lighter blue tint
-    const borderColor = '#93c5fd'; // Soft blue border
-    const borderWidth = 0.7;
-
+    // === COLORS & STYLES (same as exportBeautifulMultiPDF) ===
+    const bgColor = '#e8f5e9'; // light green
+    const headerGradientTop = '#facc15'; // yellow top
+    const headerGradientBottom = '#fcd34d'; // lighter yellow
+    const headerText = '#000000';
+    const tableHeaderBg = '#facc15';
+    const tableHeaderText = '#000000';
+    const borderColor = '#a3a3a3';
+    const borderWidth = 0.6;
     const pageWidth = doc.page.width;
     const pageHeight = doc.page.height;
-    const tableColWidths = [72, 62, 64, 66, 54, 45, 55, 68];
-    const tableWidth = tableColWidths.reduce((acc, w) => acc + w, 0);
-    const marginLeft = (pageWidth - tableWidth) / 2;
-    const tableStartY = 90;
-    const rowHeight = 20;
-    const headerHeight = 28;
-    const logoPath = path.join(__dirname, '../logo.png');
 
+    const tableColWidths = [80, 80, 80, 60, 60, 60, 70];
+    const tableWidth = tableColWidths.reduce((a, b) => a + b, 0);
+    const marginLeft = (pageWidth - tableWidth) / 2;
+    const tableStartY = 130;
+    const rowHeight = 22;
+    const headerHeight = 28;
+    const logoPath = path.join(__dirname, '../image.png');
+
+    // === PAGE BACKGROUND ===
+    function drawPageBackground() {
+      doc.save();
+      doc.rect(0, 0, pageWidth, pageHeight).fill(bgColor);
+      doc.restore();
+    }
+
+    // === LOGO WATERMARK (visible through transparent rows) ===
     function drawLogoWatermark() {
       try {
         doc.save();
-        doc.opacity(0.15);
-        doc.image(logoPath, (pageWidth - 280) / 2, (pageHeight - 280) / 2, { width: 280, height: 290, align: 'center' });
+        doc.opacity(0.08); // subtle transparency
+        doc.image(logoPath, (pageWidth - 300) / 2, (pageHeight - 300) / 2, { width: 300 });
         doc.opacity(1);
         doc.restore();
-      } catch (e) {
-        console.log('Watermark logo not found or failed to load:', e);
+      } catch (err) {
+        console.log('Watermark not found:', err.message);
       }
     }
 
-    function drawHeader(title) {
+    // === HEADER ===
+    function drawHeader() {
+      const gradient = doc.linearGradient(0, 0, 0, 80);
+      gradient.stop(0, headerGradientTop).stop(1, headerGradientBottom);
+      doc.rect(0, 0, pageWidth, 80).fill(gradient);
+
       try {
-        doc.image(logoPath, marginLeft - 50, 12, { width: 40, height: 40 });
+        doc.image(logoPath, 40, 10, { width: 60, height: 60 });
       } catch (e) {
-        console.log('Header logo not found or failed to load:', e);
+        console.log('Header logo missing:', e.message);
       }
-      const gradient = doc.linearGradient(0, 0, 0, 44);
-      gradient.stop(0, '#1e3a8a').stop(1, '#2a5caa');
-      doc.rect(0, 0, pageWidth, 44).fill(gradient);
-      doc.fontSize(14).fillColor(headerTextColor).font('Helvetica-Bold')
-        .text('9243019500', marginLeft, 15, { align: 'left', baseline: 'middle' });
-      doc.fontSize(14).fillColor(headerTextColor).font('Helvetica-Bold')
-        .text('MandiLink.ybl@gmail.com', pageWidth - marginLeft - 170, 15, { align: 'left', baseline: 'middle' });
-      doc.save();
-      doc.fillColor('#d1e0ff').font('Helvetica-Bold').text(title, marginLeft + 1, 49, { align: 'center', width: tableWidth });
-      doc.fillColor(titleColor).font('Helvetica-Bold').text(title, marginLeft, 48, { align: 'center', width: tableWidth });
-      doc.restore();
-      doc.moveTo(marginLeft, 72).lineTo(marginLeft + tableWidth, 72).lineWidth(1).strokeColor('#93c5fd').stroke();
-      let startY = tableStartY;
+
+      doc.fontSize(20)
+        .fillColor(headerText)
+        .font('Helvetica-Bold')
+        .text('MandiLink All States Report', 120, 28);
+
+      doc.fontSize(12)
+        .fillColor(headerText)
+        .text(`All States Combined`, pageWidth - 150, 20, { align: 'left' });
+
+      doc.moveTo(marginLeft, 90)
+        .lineTo(marginLeft + tableWidth, 90)
+        .strokeColor(borderColor)
+        .lineWidth(1)
+        .stroke();
+    }
+
+    // === TABLE HEADER ===
+    function drawTableHeader() {
       let x = marginLeft;
-      doc.fontSize(12).font('Helvetica-Bold');
-      const headers = ['City/Mandi', 'State', 'Item', 'Rate', 'Arrival', 'Type', 'Trend', 'Last Updated'];
+      const headers = ['City/Mandi', 'State', 'Item', 'Rate', 'Arrival', 'Trend', 'Type'];
       headers.forEach((header, i) => {
-        doc.rect(x, startY, tableColWidths[i], headerHeight).fill(tableHeaderBg);
-        doc.strokeColor(borderColor).lineWidth(borderWidth).rect(x, startY, tableColWidths[i], headerHeight).stroke();
-        doc.fillColor(tableHeaderText).text(header, x + 1, startY + 5, { width: tableColWidths[i] - 2, align: 'center' });
+        doc.rect(x, tableStartY, tableColWidths[i], headerHeight)
+          .fill(tableHeaderBg)
+          .strokeColor(borderColor)
+          .lineWidth(borderWidth)
+          .stroke();
+        doc.fillColor(tableHeaderText)
+          .font('Helvetica-Bold')
+          .fontSize(12)
+          .text(header, x + 2, tableStartY + 6, {
+            width: tableColWidths[i] - 4,
+            align: 'center'
+          });
         x += tableColWidths[i];
       });
     }
 
-    const rowsPerPage = Math.floor((pageHeight - tableStartY - headerHeight - 70) / rowHeight);
+    // === TABLE BODY ===
+    const rowsPerPage = Math.floor((pageHeight - tableStartY - headerHeight - 80) / rowHeight);
     let pageNum = 1;
+
     for (let i = 0; i < rows.length; i += rowsPerPage) {
       if (pageNum > 1) doc.addPage();
+      drawPageBackground();
       drawLogoWatermark();
-      drawHeader('DAILY MANDI REPORT ALL');
+      drawHeader();
+      drawTableHeader();
+
       let y = tableStartY + headerHeight;
       doc.fontSize(11).font('Helvetica');
+
       for (let j = 0; j < rowsPerPage && (i + j) < rows.length; j++) {
-        let row = rows[i + j];
+        const row = rows[i + j];
         let x = marginLeft;
-        const rowBg = j % 2 === 0 ? rowBgEven : rowBgOdd;
-        tableColWidths.forEach((w, cidx) => {
-          doc.rect(x, y, w, rowHeight).fill(rowBg);
+
+        // Transparent row background (only borders visible)
+        tableColWidths.forEach((w) => {
+          doc.save();
+          doc.opacity(0.2);
+          doc.rect(x, y, w, rowHeight).fill('#ffffff'); // light transparent fill
+          doc.restore();
           doc.strokeColor(borderColor).lineWidth(borderWidth).rect(x, y, w, rowHeight).stroke();
           x += w;
         });
+
         x = marginLeft;
-        const trendDisplay = row.trend.value === 0 
-          ? `${row.trend.arrow} 0` 
-          : `${row.trend.arrow} ${row.trend.value > 0 ? '+' : ''}${row.trend.value}`;
+        const trendDisplay = `${row.trend.arrow} ${row.trend.value > 0 ? '+' : ''}${row.trend.value || 0}`;
+
         [
           row.mandi,
           row.state,
           row.item,
           row.rate,
           row.arrival,
-          row.type,
           trendDisplay,
-          row.lastUpdated
-        ].forEach((val, cidx) => {
-          doc.fillColor(cidx === 6 ? row.trend.color : '#1e3a8a');
-          doc.font(cidx === 6 ? 'Helvetica-Bold' : 'Helvetica');
-          doc.text(String(val).replace(/[!]/g, ''), x + 1, y + 3, { width: tableColWidths[cidx] - 2, align: 'center', height: rowHeight - 4 });
-          x += tableColWidths[cidx];
+          row.type,
+        ].forEach((val, idx) => {
+          const textColor = idx === 5 ? row.trend.color : '#000000';
+          doc.fillColor(textColor)
+            .font(idx === 5 ? 'Helvetica-Bold' : 'Helvetica')
+            .text(String(val || ''), x + 2, y + 4, {
+              width: tableColWidths[idx] - 4,
+              align: 'center',
+            });
+          x += tableColWidths[idx];
         });
+
         y += rowHeight;
       }
-      doc.fontSize(10).fillColor('#6b7280').text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 30, { align: 'center' });
-      pageNum += 1;
+
+      // Footer
+      doc.fontSize(10)
+        .fillColor('#4b5563')
+        .text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 40, { align: 'center' });
+
+      pageNum++;
     }
 
     doc.end();
@@ -341,6 +467,8 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
     res.status(500).json({ error: 'Failed to export PDF' });
   }
 };
+
+
 
 // [Remaining exports (beautifulPreview, history, reportPage, mandiratePage) remain unchanged]
 
