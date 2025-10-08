@@ -8,96 +8,98 @@ const SabjiMandirate = require('../models/mandirate');
 async function getReportRowsFull(dateStr, stateId) {
   let query = {};
   if (stateId) query.state = stateId;
+
   const rates = await SabjiMandirate.find(query).populate('state');
   let rows = [];
+
   rates.forEach(rate => {
     rate.list.forEach(item => {
       let price = null;
       if (dateStr) {
         const dt = new Date(dateStr);
         dt.setHours(0, 0, 0, 0);
-        price = item.prices.find(p => {
-          const pdt = new Date(p.date).setHours(0, 0, 0, 0);
-          return pdt === dt.getTime();
-        });
+        price = item.prices.find(p => new Date(p.date).setHours(0, 0, 0, 0) === dt.getTime());
       }
       if (!price) price = item.prices[item.prices.length - 1];
-      if (price) {
-        item.prices.sort((a, b) => a.date - b.date);
-        const idx = item.prices.findIndex(p => p === price);
-        let trend = price.trend;
-        if (trend === 0 && idx > 0) {
-          const prev = item.prices[idx - 1];
-          trend = price.minrate - prev.minrate;
-        }
-        let trendText = '';
-        let trendColor = '#95a5a6';
-        let trendArrow = '→';
-        if (trend > 0) {
-          trendText = 'Up';
-          trendColor = '#27ae60';
-          trendArrow = '↑';
-        } else if (trend < 0) {
-          trendText = 'Down';
-          trendColor = '#c0392b';
-          trendArrow = '↓';
-        } else {
-          trendText = 'Neutral';
-        }
-        rows.push({
-          mandi: rate.mandi,
-          state: rate.state.name,
-          item: item.commodity,
-          rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
-          arrival: price.arrival ? price.arrival : '',
-          type: item.type || price.type || 'COMBINE',
-          trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
-          lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
-        });
-      }
+      if (!price) return;
+
+      item.prices.sort((a, b) => a.date - b.date);
+      const idx = item.prices.findIndex(p => p === price);
+
+      let trend = price.trend;
+      if (trend === 0 && idx > 0) trend = price.minrate - item.prices[idx - 1].minrate;
+
+      let trendText = 'Neutral', trendColor = '#95a5a6', trendArrow = '→';
+      if (trend > 0) { trendText = 'Up'; trendColor = '#27ae60'; trendArrow = '↑'; }
+      else if (trend < 0) { trendText = 'Down'; trendColor = '#c0392b'; trendArrow = '↓'; }
+
+      rows.push({
+        mandi: rate.mandi,
+        state: rate.state.name,
+        item: item.commodity,
+        rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
+        arrival: price.arrival || '',
+        type: item.type || price.type || 'COMBINE',
+        trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
+        lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
+      });
     });
   });
+
   return rows;
 }
+function drawTextWatermark(doc, pageWidth, pageHeight) {
+  const watermarkText = 'MandiLink';
+  const fontSize = 40;
+  const opacity = 0.05;
+
+  doc.save();
+  doc.font('Helvetica-Bold').fontSize(fontSize).fillColor('#000000').opacity(opacity);
+
+  const xSpacing = 200;
+  const ySpacing = 150;
+
+  for (let y = 0; y < pageHeight; y += ySpacing) {
+    for (let x = 0; x < pageWidth; x += xSpacing) {
+      doc.text(watermarkText, x, y, { rotate: -45, align: 'center' });
+    }
+  }
+
+  doc.restore();
+}
+
 
 // Helper: get all latest prices for all mandis/states, all columns filled
 async function getAllReportRowsFull() {
   const rates = await SabjiMandirate.find({}).populate('state');
   let rows = [];
+
   rates.forEach(rate => {
     rate.list.forEach(item => {
-      let price = item.prices[item.prices.length - 1];
-      if (price) {
-        let trend = price.trend || 0;
-        let trendText = '';
-        let trendColor = '#95a5a6';
-        let trendArrow = '→';
-        if (trend > 0) {
-          trendText = 'Up';
-          trendColor = '#27ae60';
-          trendArrow = '↑';
-        } else if (trend < 0) {
-          trendText = 'Down';
-          trendColor = '#c0392b';
-          trendArrow = '↓';
-        } else {
-          trendText = 'Neutral';
-        }
-        rows.push({
-          mandi: rate.mandi,
-          state: rate.state.name,
-          item: item.commodity,
-          rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
-          arrival: price.arrival ? price.arrival : '',
-          type: item.type || price.type || 'COMBINE',
-          trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
-          lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
-        });
-      }
+      const price = item.prices[item.prices.length - 1];
+      if (!price) return;
+
+      const trend = price.trend || 0;
+      let trendText = 'Neutral', trendColor = '#95a5a6', trendArrow = '→';
+      if (trend > 0) { trendText = 'Up'; trendColor = '#27ae60'; trendArrow = '↑'; }
+      else if (trend < 0) { trendText = 'Down'; trendColor = '#c0392b'; trendArrow = '↓'; }
+
+      rows.push({
+        mandi: rate.mandi,
+        state: rate.state.name,
+        item: item.commodity,
+        rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
+        arrival: price.arrival || '',
+        type: item.type || price.type || 'COMBINE',
+        trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
+        lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
+      });
     });
   });
+
   return rows;
 }
+
 
 // PDF export: centered, small table, header logo, watermark logo on every page, colorful professional design
 exports.exportBeautifulMultiPDF = async (req, res) => {
@@ -366,7 +368,7 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
       doc.fontSize(20)
         .fillColor(headerText)
         .font('Helvetica-Bold')
-        .text('MandiLink All States Report', 120, 28);
+        .text('MandiLink update', 120, 28);
 
       doc.fontSize(12)
         .fillColor(headerText)
