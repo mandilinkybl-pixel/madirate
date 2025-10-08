@@ -26,7 +26,7 @@ async function getReportRowsFull(dateStr, stateId) {
       item.prices.sort((a, b) => a.date - b.date);
       const idx = item.prices.findIndex(p => p === price);
 
-      let trend = price.trend;
+      let trend = price.trend || 0;
       if (trend === 0 && idx > 0) trend = price.minrate - item.prices[idx - 1].minrate;
 
       let trendText = 'Neutral', trendColor = '#95a5a6', trendArrow = '→';
@@ -37,9 +37,9 @@ async function getReportRowsFull(dateStr, stateId) {
         mandi: rate.mandi,
         state: rate.state.name,
         item: item.commodity,
-        rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
-        arrival: price.arrival || '',
-        type: item.type || price.type || 'COMBINE',
+        rate: `${price.minrate != null ? price.minrate : 0}${price.maxrate != null ? '-' + price.maxrate : ''}`,
+        arrival: price.arrival != null ? price.arrival : 0,
+        type: item.type || price.type || 'N/A', // Changed default to 'N/A' to match frontend
         trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
         lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
       });
@@ -48,26 +48,6 @@ async function getReportRowsFull(dateStr, stateId) {
 
   return rows;
 }
-function drawTextWatermark(doc, pageWidth, pageHeight) {
-  const watermarkText = 'MandiLink';
-  const fontSize = 40;
-  const opacity = 0.05;
-
-  doc.save();
-  doc.font('Helvetica-Bold').fontSize(fontSize).fillColor('#000000').opacity(opacity);
-
-  const xSpacing = 200;
-  const ySpacing = 150;
-
-  for (let y = 0; y < pageHeight; y += ySpacing) {
-    for (let x = 0; x < pageWidth; x += xSpacing) {
-      doc.text(watermarkText, x, y, { rotate: -45, align: 'center' });
-    }
-  }
-
-  doc.restore();
-}
-
 
 // Helper: get all latest prices for all mandis/states, all columns filled
 async function getAllReportRowsFull() {
@@ -88,9 +68,9 @@ async function getAllReportRowsFull() {
         mandi: rate.mandi,
         state: rate.state.name,
         item: item.commodity,
-        rate: `${price.minrate}${price.maxrate ? '-' + price.maxrate : ''}`,
-        arrival: price.arrival || '',
-        type: item.type || price.type || 'COMBINE',
+        rate: `${price.minrate != null ? price.minrate : 0}${price.maxrate != null ? '-' + price.maxrate : ''}`,
+        arrival: price.arrival != null ? price.arrival : 0,
+        type: item.type || price.type || 'N/A', // Changed default to 'N/A' to match frontend
         trend: { text: trendText, color: trendColor, arrow: trendArrow, value: trend },
         lastUpdated: price.date ? moment(price.date).format('DD/MM/YYYY\nHH:mm') : ''
       });
@@ -100,8 +80,7 @@ async function getAllReportRowsFull() {
   return rows;
 }
 
-
-// PDF export: centered, small table, header logo, watermark logo on every page, colorful professional design
+// PDF export: centered, small table, header logo, watermark logo below header with date and MandiLink Update
 exports.exportBeautifulMultiPDF = async (req, res) => {
   try {
     const { date, state } = req.query;
@@ -139,12 +118,30 @@ exports.exportBeautifulMultiPDF = async (req, res) => {
       doc.restore();
     }
 
-    // === LOGO WATERMARK ===
+    // === LOGO WATERMARK WITH DATE AND TEXT ===
     function drawLogoWatermark() {
       try {
         doc.save();
+        // Position watermark below header (y = 90)
+        const watermarkY = 100; // Start just below header
+        const watermarkWidth = 500; // Reduced size for better fit
+        const watermarkX = (pageWidth - watermarkWidth) / 2;
+
+        // Draw logo
         doc.opacity(0.1);
-        doc.image(logoPath, (pageWidth - 300) / 2, (pageHeight - 300) / 2, { width: 300 });
+        doc.image(logoPath, watermarkX, watermarkY, { width: watermarkWidth });
+
+        // Draw text: Date and "MandiLink Update"
+        const watermarkText = date
+          ? `MandiLink Update\n${moment(date).format('DD/MM/YYYY')}`
+          : 'MandiLink Update\nAll Records';
+        doc.opacity(0.05);
+        doc.font('Helvetica-Bold').fontSize(20).fillColor('#000000');
+        doc.text(watermarkText, watermarkX, watermarkY + watermarkWidth + 10, {
+          align: 'center',
+          width: watermarkWidth
+        });
+
         doc.opacity(1);
         doc.restore();
       } catch (err) {
@@ -301,8 +298,6 @@ exports.exportBeautifulMultiPDF = async (req, res) => {
   }
 };
 
-
-
 // PDF export: ALL reports (latest prices)
 exports.exportAllBeautifulMultiPDF = async (req, res) => {
   try {
@@ -313,7 +308,7 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=mandi_all_report.pdf`);
     doc.pipe(res);
 
-    // === COLORS & STYLES (same as exportBeautifulMultiPDF) ===
+    // === COLORS & STYLES ===
     const bgColor = '#e8f5e9'; // light green
     const headerGradientTop = '#facc15'; // yellow top
     const headerGradientBottom = '#fcd34d'; // lighter yellow
@@ -340,12 +335,28 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
       doc.restore();
     }
 
-    // === LOGO WATERMARK (visible through transparent rows) ===
+    // === LOGO WATERMARK WITH DATE AND TEXT ===
     function drawLogoWatermark() {
       try {
         doc.save();
-        doc.opacity(0.08); // subtle transparency
-        doc.image(logoPath, (pageWidth - 300) / 2, (pageHeight - 300) / 2, { width: 300 });
+        // Position watermark below header (y = 90)
+        const watermarkY = 100; // Start just below header
+        const watermarkWidth = 500; // Reduced size for better fit
+        const watermarkX = (pageWidth - watermarkWidth) / 2;
+
+        // Draw logo
+        doc.opacity(0.1);
+        doc.image(logoPath, watermarkX, watermarkY, { width: watermarkWidth });
+
+        // Draw text: "MandiLink Update" and "All Records"
+        const watermarkText = 'MandiLink Update\nAll Records';
+        doc.opacity(0.05);
+        doc.font('Helvetica-Bold').fontSize(20).fillColor('#000000');
+        doc.text(watermarkText, watermarkX, watermarkY + watermarkWidth + 10, {
+          align: 'center',
+          width: watermarkWidth
+        });
+
         doc.opacity(1);
         doc.restore();
       } catch (err) {
@@ -354,32 +365,35 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
     }
 
     // === HEADER ===
-    function drawHeader() {
-      const gradient = doc.linearGradient(0, 0, 0, 80);
-      gradient.stop(0, headerGradientTop).stop(1, headerGradientBottom);
-      doc.rect(0, 0, pageWidth, 80).fill(gradient);
+    // === HEADER ===
+function drawHeader() {
+  const gradient = doc.linearGradient(0, 0, 0, 80);
+  gradient.stop(0, headerGradientTop).stop(1, headerGradientBottom);
+  doc.rect(0, 0, pageWidth, 80).fill(gradient);
 
-      try {
-        doc.image(logoPath, 40, 10, { width: 60, height: 60 });
-      } catch (e) {
-        console.log('Header logo missing:', e.message);
-      }
+  try {
+    doc.image(logoPath, 40, 10, { width: 60, height: 60 });
+  } catch (e) {
+    console.log('Header logo missing:', e.message);
+  }
 
-      doc.fontSize(20)
-        .fillColor(headerText)
-        .font('Helvetica-Bold')
-        .text('MandiLink update', 120, 28);
+  doc.fontSize(20)
+    .fillColor(headerText)
+    .font('Helvetica-Bold')
+    .text('MandiLink Update', 120, 28);
 
-      doc.fontSize(12)
-        .fillColor(headerText)
-        .text(`All States Combined`, pageWidth - 150, 20, { align: 'left' });
+  // Display current date only using system timezone
+  const currentDate = moment().format('DD/MM/YYYY');
+  doc.fontSize(12)
+    .fillColor(headerText)
+    .text(`Date: ${currentDate} IST`, pageWidth - 150, 20, { align: 'left' });
 
-      doc.moveTo(marginLeft, 90)
-        .lineTo(marginLeft + tableWidth, 90)
-        .strokeColor(borderColor)
-        .lineWidth(1)
-        .stroke();
-    }
+  doc.moveTo(marginLeft, 90)
+    .lineTo(marginLeft + tableWidth, 90)
+    .strokeColor(borderColor)
+    .lineWidth(1)
+    .stroke();
+}
 
     // === TABLE HEADER ===
     function drawTableHeader() {
@@ -424,7 +438,7 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
         tableColWidths.forEach((w) => {
           doc.save();
           doc.opacity(0.2);
-          doc.rect(x, y, w, rowHeight).fill('#ffffff'); // light transparent fill
+          doc.rect(x, y, w, rowHeight).fill('#ffffff');
           doc.restore();
           doc.strokeColor(borderColor).lineWidth(borderWidth).rect(x, y, w, rowHeight).stroke();
           x += w;
@@ -470,10 +484,6 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
   }
 };
 
-
-
-// [Remaining exports (beautifulPreview, history, reportPage, mandiratePage) remain unchanged]
-
 // Table preview for EJS (AJAX for browser table)
 exports.beautifulPreview = async (req, res) => {
   try {
@@ -503,9 +513,9 @@ exports.history = async (req, res) => {
       commodity: item.commodity,
       prices: item.prices.sort((a, b) => new Date(a.date) - new Date(b.date)).map(p => ({
         date: p.date,
-        minrate: p.minrate,
-        maxrate: p.maxrate,
-        arrival: p.arrival,
+        minrate: p.minrate != null ? p.minrate : 0,
+        maxrate: p.maxrate != null ? p.maxrate : 0,
+        arrival: p.arrival != null ? p.arrival : 0,
         trend: p.trend || 0
       }))
     });

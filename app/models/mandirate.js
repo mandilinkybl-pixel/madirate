@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 
 const PriceSchema = new mongoose.Schema({
-  minrate: { type: Number, required: true, min: 0 },
-  maxrate: { type: Number, required: true, min: 0 },
+  minrate: { type: Number, min: 0 },
+  maxrate: { type: Number, min: 0 },
   arrival: { type: Number, default: 0, min: 0 },
   trend: { type: Number, default: 0 },
   date: {
     type: Date,
-    required: true,
+    
     default: () => {
       const now = new Date();
       // Ensure date-only in IST (00:00:00)
@@ -20,11 +20,11 @@ const PriceSchema = new mongoose.Schema({
 
 // Sub-schema for each commodity
 const CommodityListSchema = new mongoose.Schema({
-  commodity: { type: String, required: true, trim: true },
-  type: { type: String, required: true, trim: true },
+  commodity: { type: String,  trim: true },
+  type: { type: String,  trim: true },
   prices: {
     type: [PriceSchema],
-    required: true,
+    
     validate: [v => v.length > 0, "At least one price is required"],
   },
 });
@@ -35,12 +35,12 @@ const MandirateSchema = new mongoose.Schema(
     state: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "rajya",
-      required: true,
+      
     },
-    mandi: { type: String, required: true, trim: true },
+    mandi: { type: String,  trim: true },
     list: {
       type: [CommodityListSchema],
-      required: true,
+      
       validate: [v => v.length > 0, "At least one commodity is required"],
     },
     latest_trend: { type: Number, default: 0 },

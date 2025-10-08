@@ -19,21 +19,22 @@ class MandiRateController {
       res.status(500).json({ error: 'Failed to load mandi rate form' });
     }
   }
- getMandis = async (req, res) => {
-  console.log('Fetching mandis for state:', req.params.state);
-  try {
-    const mandis = await sabjiMandi.find({ state: req.params.state }).select('_id name').lean();
-    console.log('Mandis found:', JSON.stringify(mandis, null, 2));
-    if (!mandis.length) {
-      console.warn('No mandis found for state:', req.params.state);
-      return res.status(200).json([]);
+
+  async getMandis(req, res) {
+    console.log('Fetching mandis for state:', req.params.state);
+    try {
+      const mandis = await sabjiMandi.find({ state: req.params.state }).select('_id name').lean();
+      console.log('Mandis found:', JSON.stringify(mandis, null, 2));
+      if (!mandis.length) {
+        console.warn('No mandis found for state:', req.params.state);
+        return res.status(200).json([]);
+      }
+      res.json(mandis.map(m => ({ id: m._id, name: m.name })));
+    } catch (error) {
+      console.error('Error fetching mandis:', error);
+      res.status(500).json({ error: 'Failed to fetch mandis' });
     }
-    res.json(mandis.map(m => ({ id: m._id, name: m.name })));
-  } catch (error) {
-    console.error('Error fetching mandis:', error);
-    res.status(500).json({ error: 'Failed to fetch mandis' });
   }
-};
 
   async search(req, res) {
     try {
@@ -47,7 +48,7 @@ class MandiRateController {
         rate.list.forEach(item => {
           const lastPrice = item.prices[item.prices.length - 1] || {};
           const secondLastPrice = item.prices[item.prices.length - 2] || {};
-          const difference = lastPrice.maxrate ? (lastPrice.maxrate - (secondLastPrice.maxrate || lastPrice.maxrate)) : 0;
+          const difference = lastPrice.maxrate != null ? (lastPrice.maxrate - (secondLastPrice.maxrate || 0)) : 0;
           if (!search ||
               rate.state.name.toLowerCase().includes(search.toLowerCase()) ||
               rate.mandi.toLowerCase().includes(search.toLowerCase()) ||
@@ -57,10 +58,10 @@ class MandiRateController {
               stateName: rate.state.name,
               mandi: rate.mandi,
               commodity: item.commodity,
-              type: item.type,
-              minrate: lastPrice.minrate || 0,
-              maxrate: lastPrice.maxrate || 0,
-              arrival: lastPrice.arrival || 0,
+              type: item.type || 'N/A',
+              minrate: lastPrice.minrate != null ? lastPrice.minrate : 0,
+              maxrate: lastPrice.maxrate != null ? lastPrice.maxrate : 0,
+              arrival: lastPrice.arrival != null ? lastPrice.arrival : 0,
               updated: lastPrice.date ? new Date(lastPrice.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '',
               difference,
               mandirateid: rate._id
@@ -75,112 +76,109 @@ class MandiRateController {
     }
   }
 
-add = async (req, res) => {
-  console.log('Raw request body:', JSON.stringify(req.body, null, 2));
-  try {
-    if (!req.body) {
-      console.error('Request body is undefined');
-      return res.status(400).json({ error: 'Request body is missing' });
-    }
-
-    let { state, mandi, types, commodity_ids, minrates, maxrates, arrivals } = req.body;
-
-    // Normalize arrays
-    types = Array.isArray(types) ? types : (typeof types === 'string' ? [types] : []);
-    commodity_ids = Array.isArray(commodity_ids) ? commodity_ids : (typeof commodity_ids === 'string' ? [commodity_ids] : []);
-    minrates = Array.isArray(minrates) ? minrates : (typeof minrates === 'string' ? [minrates] : []);
-    maxrates = Array.isArray(maxrates) ? maxrates : (typeof maxrates === 'string' ? [maxrates] : []);
-    arrivals = Array.isArray(arrivals) ? arrivals : (typeof arrivals === 'string' ? [arrivals] : []);
-
-    console.log('Normalized request body:', { state, mandi, types, commodity_ids, minrates, maxrates, arrivals });
-
-    // Validate required fields
-    if (!state || !mandi || !types.length || !commodity_ids.length || !minrates.length || !maxrates.length) {
-      console.error('Request body is missing required fields:', { state, mandi, types, commodity_ids, minrates, maxrates, arrivals });
-      return res.status(400).json({ error: 'Missing required fields', details: { state, mandi, types, commodity_ids, minrates, maxrates, arrivals } });
-    }
-
-    // Validate array lengths
-    if (types.length !== commodity_ids.length || types.length !== minrates.length || types.length !== maxrates.length || (arrivals.length && arrivals.length !== types.length)) {
-      console.error('Array length mismatch:', { types: types.length, commodity_ids: commodity_ids.length, minrates: minrates.length, maxrates: maxrates.length, arrivals: arrivals.length });
-      return res.status(400).json({ error: 'Array length mismatch' });
-    }
-
-    // Validate state and mandi
-    const stateExists = await rajya.findById(state);
-    if (!stateExists) {
-      console.error('Invalid state ID:', state);
-      return res.status(400).json({ error: 'Invalid state ID' });
-    }
-
-    const mandiExists = await sabjiMandi.findOne({ state, name: mandi });
-    if (!mandiExists) {
-      console.error('Invalid mandi:', mandi);
-      return res.status(400).json({ error: 'Invalid mandi name' });
-    }
-
-    // Process each commodity
-    let mandiRate = await SabjiMandirate.findOne({ state, mandi });
-    if (!mandiRate) {
-      mandiRate = new SabjiMandirate({ state, mandi, list: [], latest_trend: 0 });
-    }
-
-    for (let i = 0; i < commodity_ids.length; i++) {
-      const commodityName = commodity_ids[i];
-      const type = types[i];
-      const minrate = parseFloat(minrates[i]);
-      const maxrate = parseFloat(maxrates[i]);
-      const arrival = arrivals[i] ? parseFloat(arrivals[i]) : null;
-
-      if (isNaN(minrate) || isNaN(maxrate) || minrate < 0 || maxrate < 0 || (arrival !== null && (isNaN(arrival) || arrival < 0))) {
-        console.error('Invalid numeric values:', { minrate, maxrate, arrival });
-        return res.status(400).json({ error: 'Invalid numeric values for prices or arrivals' });
+  async add(req, res) {
+    console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+    try {
+      if (!req.body) {
+        console.error('Request body is undefined');
+        return res.status(400).json({ error: 'Request body is missing' });
       }
 
-      const commodityEntry = mandiRate.list.find(c => c.commodity.toLowerCase() === commodityName.toLowerCase());
-      if (commodityEntry) {
-        const lastPrice = commodityEntry.prices[commodityEntry.prices.length - 1] || { minrate: 0 };
-        const trend = minrate > lastPrice.minrate ? 1 : minrate < lastPrice.minrate ? -1 : 0;
-        commodityEntry.prices.push({ minrate, maxrate, arrival, date: new Date(), trend });
-        commodityEntry.type = type;
-      } else {
-        mandiRate.list.push({
-          commodity: commodityName,
-          type,
-          prices: [{ minrate, maxrate, arrival, date: new Date(), trend: 0 }]
-        });
+      let { state, mandi, types, commodity_ids, minrates, maxrates, arrivals } = req.body;
+
+      // Normalize arrays
+      types = Array.isArray(types) ? types : (typeof types === 'string' ? [types] : []);
+      commodity_ids = Array.isArray(commodity_ids) ? commodity_ids : (typeof commodity_ids === 'string' ? [commodity_ids] : []);
+      minrates = Array.isArray(minrates) ? minrates : (typeof minrates === 'string' ? [minrates] : []);
+      maxrates = Array.isArray(maxrates) ? maxrates : (typeof maxrates === 'string' ? [maxrates] : []);
+      arrivals = Array.isArray(arrivals) ? arrivals : (typeof arrivals === 'string' ? [arrivals] : []);
+
+      console.log('Normalized request body:', { state, mandi, types, commodity_ids, minrates, maxrates, arrivals });
+
+      // Validate required fields
+      if (!state || !mandi || !commodity_ids.length || !minrates.length || !maxrates.length) {
+        console.error('Request body is missing required fields:', { state, mandi, types, commodity_ids, minrates, maxrates, arrivals });
+        return res.status(400).json({ error: 'Missing required fields', details: { state, mandi, commodity_ids, minrates, maxrates, arrivals } });
       }
+
+      // Validate array lengths
+      if (types.length !== commodity_ids.length || minrates.length !== commodity_ids.length || maxrates.length !== commodity_ids.length || (arrivals.length && arrivals.length !== commodity_ids.length)) {
+        console.error('Array length mismatch:', { types: types.length, commodity_ids: commodity_ids.length, minrates: minrates.length, maxrates: maxrates.length, arrivals: arrivals.length });
+        return res.status(400).json({ error: 'Array length mismatch' });
+      }
+
+      // Validate state and mandi
+      const stateExists = await rajya.findById(state);
+      if (!stateExists) {
+        console.error('Invalid state ID:', state);
+        return res.status(400).json({ error: 'Invalid state ID' });
+      }
+
+      const mandiExists = await sabjiMandi.findOne({ state, name: mandi });
+      if (!mandiExists) {
+        console.error('Invalid mandi:', mandi);
+        return res.status(400).json({ error: 'Invalid mandi name' });
+      }
+
+      // Process each commodity
+      let mandiRate = await SabjiMandirate.findOne({ state, mandi });
+      if (!mandiRate) {
+        mandiRate = new SabjiMandirate({ state, mandi, list: [], latest_trend: 0 });
+      }
+
+      for (let i = 0; i < commodity_ids.length; i++) {
+        const commodityName = commodity_ids[i];
+        const type = types[i] || 'N/A'; // Default to 'N/A' for blank type
+        const minrate = minrates[i] != null ? parseFloat(minrates[i]) : 0; // Handle "00" or empty as 0
+        const maxrate = maxrates[i] != null ? parseFloat(maxrates[i]) : 0; // Handle "00" or empty as 0
+        const arrival = arrivals[i] != null ? parseFloat(arrivals[i]) : 0; // Handle "00" or empty as 0
+
+        // Validate numeric values
+        if (isNaN(minrate) || isNaN(maxrate) || minrate < 0 || maxrate < 0 || (arrival != null && isNaN(arrival) || arrival < 0)) {
+          console.error('Invalid numeric values:', { minrate, maxrate, arrival });
+          return res.status(400).json({ error: `Invalid numeric values for prices or arrivals at row ${i + 1}` });
+        }
+
+        const commodityEntry = mandiRate.list.find(c => c.commodity.toLowerCase() === commodityName.toLowerCase());
+        if (commodityEntry) {
+          const lastPrice = commodityEntry.prices[commodityEntry.prices.length - 1] || { minrate: 0 };
+          const trend = minrate > lastPrice.minrate ? 1 : minrate < lastPrice.minrate ? -1 : 0;
+          commodityEntry.prices.push({
+            minrate,
+            maxrate,
+            arrival,
+            date: new Date(),
+            trend
+          });
+          commodityEntry.type = type;
+        } else {
+          mandiRate.list.push({
+            commodity: commodityName,
+            type,
+            prices: [{
+              minrate,
+              maxrate,
+              arrival,
+              date: new Date(),
+              trend: 0
+            }]
+          });
+        }
+      }
+
+      // Recalculate latest_trend
+      mandiRate.latest_trend = mandiRate.list.reduce((sum, c) => {
+        const latestPrice = c.prices[c.prices.length - 1];
+        return sum + (latestPrice?.trend || 0);
+      }, 0);
+
+      await mandiRate.save();
+      res.redirect('/mandi-rates');
+    } catch (error) {
+      console.error('Error in add:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
-
-    // Recalculate latest_trend
-    mandiRate.latest_trend = mandiRate.list.reduce((sum, c) => {
-      const latestPrice = c.prices[c.prices.length - 1];
-      return sum + (latestPrice?.trend || 0);
-    }, 0);
-
-    await mandiRate.save();
-    res.redirect('/mandi-rates');
-  } catch (error) {
-    console.error('Error in add:', error);
-    res.status(500).json({ error: 'Internal server error' });
   }
-};
-
-// getMandis = async (req, res) => {
-//   console.log('Fetching mandis for state:', req.params.state);
-//   try {
-//     const mandis = await SabjiMandi.find({ state: req.params.state }).select('_id name').lean();
-//     console.log('Mandis found:', JSON.stringify(mandis, null, 2));
-//     if (!mandis.length) {
-//       console.warn('No mandis found for state:', req.params.state);
-//       return res.status(200).json([]);
-//     }
-//     res.json(mandis.map(m => ({ id: m._id, name: m.name })));
-//   } catch (error) {
-//     console.error('Error fetching mandis:', error);
-//     res.status(500).json({ error: 'Failed to fetch mandis' });
-//   }
-// };
 
   async addPriceToCommodity(req, res) {
     try {
@@ -210,20 +208,25 @@ add = async (req, res) => {
       const lastPrice = prices[prices.length - 1] || { maxrate: 0 };
       const trend = Number(maxrate) - Number(lastPrice.maxrate || 0);
 
+      // Convert inputs to numbers, defaulting to 0 for "00" or empty
+      const minrateNum = minrate != null ? Number(minrate) : 0;
+      const maxrateNum = maxrate != null ? Number(maxrate) : 0;
+      const arrivalNum = arrival != null ? Number(arrival) : 0;
+
       const todayIndex = prices.findIndex(p => p.date.getTime() === today.getTime());
       if (todayIndex > -1) {
         prices[todayIndex] = {
-          minrate: Number(minrate),
-          maxrate: Number(maxrate),
-          arrival: Number(arrival) || 0,
+          minrate: minrateNum,
+          maxrate: maxrateNum,
+          arrival: arrivalNum,
           date: today,
           trend
         };
       } else {
         prices.push({
-          minrate: Number(minrate),
-          maxrate: Number(maxrate),
-          arrival: Number(arrival) || 0,
+          minrate: minrateNum,
+          maxrate: maxrateNum,
+          arrival: arrivalNum,
           date: today,
           trend
         });
@@ -284,10 +287,10 @@ add = async (req, res) => {
         commodity: item.commodity,
         prices: item.prices.sort((a, b) => a.date - b.date).map(p => ({
           date: new Date(p.date).toISOString(),
-          minrate: p.minrate,
-          maxrate: p.maxrate,
-          arrival: p.arrival,
-          trend: p.trend
+          minrate: p.minrate != null ? p.minrate : 0,
+          maxrate: p.maxrate != null ? p.maxrate : 0,
+          arrival: p.arrival != null ? p.arrival : 0,
+          trend: p.trend || 0
         }))
       });
     } catch (err) {
@@ -306,7 +309,7 @@ add = async (req, res) => {
       const records = [];
       rates.forEach(rate => {
         rate.list.forEach(item => {
-          const lastPrice = item.prices[item.prices.length - 1];
+          const lastPrice = item.prices[item.prices.length - 1] || {};
           if (!search ||
               rate.state.name.toLowerCase().includes(search.toLowerCase()) ||
               rate.mandi.toLowerCase().includes(search.toLowerCase()) ||
@@ -315,11 +318,11 @@ add = async (req, res) => {
               state: rate.state.name,
               mandi: rate.mandi,
               commodity: item.commodity,
-              type: item.type,
-              min: lastPrice.minrate,
-              max: lastPrice.maxrate,
-              arrival: lastPrice.arrival,
-              date: new Date(lastPrice.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+              type: item.type || 'N/A',
+              min: lastPrice.minrate != null ? lastPrice.minrate : 0,
+              max: lastPrice.maxrate != null ? lastPrice.maxrate : 0,
+              arrival: lastPrice.arrival != null ? lastPrice.arrival : 0,
+              date: lastPrice.date ? new Date(lastPrice.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''
             });
           }
         });
@@ -355,7 +358,7 @@ add = async (req, res) => {
       const records = [];
       rates.forEach(rate => {
         rate.list.forEach(item => {
-          const lastPrice = item.prices[item.prices.length - 1];
+          const lastPrice = item.prices[item.prices.length - 1] || {};
           if (!search ||
               rate.state.name.toLowerCase().includes(search.toLowerCase()) ||
               rate.mandi.toLowerCase().includes(search.toLowerCase()) ||
@@ -363,12 +366,12 @@ add = async (req, res) => {
             records.push({
               State: rate.state.name,
               Mandi: rate.mandi,
-              Type: item.type,
+              Type: item.type || 'N/A',
               Commodity: item.commodity,
-              'Min Price': lastPrice.minrate,
-              'Max Price': lastPrice.maxrate,
-              'Est. Qty': lastPrice.arrival,
-              'Last Updated': new Date(lastPrice.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+              'Min Price': lastPrice.minrate != null ? lastPrice.minrate : 0,
+              'Max Price': lastPrice.maxrate != null ? lastPrice.maxrate : 0,
+              'Est. Qty': lastPrice.arrival != null ? lastPrice.arrival : 0,
+              'Last Updated': lastPrice.date ? new Date(lastPrice.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''
             });
           }
         });
@@ -400,10 +403,10 @@ add = async (req, res) => {
               mandiName: rate.mandi,
               address: `${rate.state.name} / ${rate.mandi}`,
               commodity: item.commodity,
-              type: item.type,
-              minimum: p.minrate,
-              maximum: p.maxrate,
-              estimatedArrival: p.arrival,
+              type: item.type || 'N/A',
+              minimum: p.minrate != null ? p.minrate : 0,
+              maximum: p.maxrate != null ? p.maxrate : 0,
+              estimatedArrival: p.arrival != null ? p.arrival : 0,
               lastUpdated: new Date(p.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
             });
           });
@@ -415,7 +418,6 @@ add = async (req, res) => {
       res.status(500).json({ error: 'Failed to fetch report' });
     }
   }
-  
 }
 
 module.exports = new MandiRateController();

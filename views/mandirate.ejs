@@ -138,23 +138,21 @@
   <div class="sidebar" id="sidebar">
     <button class="collapse-btn" id="collapseBtn" title="Collapse/Expand Sidebar"><i class="bi bi-list"></i></button>
     <div class="sidebar-header">
-    
       Mandi Panel
     </div>
-<nav class="nav flex-column px-3 mt-2">
-  <a href="/" class="nav-link active"><i class="bi bi-house-door"></i> <span>Reports</span></a>
-  <a href="/mandi-rates" class="nav-link"><i class="bi bi-plus-square"></i> <span>Add MandiRates</span></a>
-  <a href="/mandi" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> <span>Add Mandi</span></a>
-  <a href="/commodities" class="nav-link"><i class="bi bi-clock-history"></i> <span>Commodities</span></a>
-  <a href="/states" class="nav-link"><i class="bi bi-gear"></i> <span>States</span></a>
-  <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
-</nav>
+    <nav class="nav flex-column px-3 mt-2">
+      <a href="/" class="nav-link active"><i class="bi bi-house-door"></i> <span>Reports</span></a>
+      <a href="/mandi-rates" class="nav-link"><i class="bi bi-plus-square"></i> <span>Add MandiRates</span></a>
+      <a href="/mandi" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> <span>Add Mandi</span></a>
+      <a href="/commodities" class="nav-link"><i class="bi bi-clock-history"></i> <span>Commodities</span></a>
+      <a href="/states" class="nav-link"><i class="bi bi-gear"></i> <span>States</span></a>
+      <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a>
+    </nav>
     <div class="mt-auto px-3 pb-4 small text-center" style="opacity:0.7;">
       <i class="bi bi-person-circle"></i> Admin Panel
     </div>
   </div>
 
- 
   <div class="main-content" id="mainContent">
     <div class="container mt-4">
       <h2>Mandi Rates</h2>
@@ -171,7 +169,7 @@
           <div class="error-message" id="stateError"></div>
         </div>
         <div class="col-md-3">
-          <input type="text" id="filterMandi" class="form-control" placeholder="Select Mandi" list="mandiList" aria-label="Mandi Name" required>
+          <input type="text" id="filterMandi" class="form-control" placeholder="Select Mandi" list="mandiList" aria-label="Mandi Name">
           <datalist id="mandiList"></datalist>
           <div class="error-message" id="mandiError"></div>
         </div>
@@ -221,14 +219,14 @@
               <td>
                 <input type="text" class="form-control addAddress" value="" readonly aria-label="Address">
               </td>
-             <td>
+              <td>
   <input 
     type="text" 
     name="types[]" 
     class="form-control type-input" 
-    placeholder="Enter Type" 
-    required
-  />
+    placeholder="Enter Type (e.g., Organic, Conventional)"
+    aria-label="Type"
+  >
   <div class="error-message" data-error="type"></div>
 </td>
 
@@ -242,11 +240,11 @@
                 <div class="error-message" data-error="commodity"></div>
               </td>
               <td>
-                <input type="number" name="minrates[]" class="form-control minrate-input" min="0" step="0.01" aria-label="Min Price" required>
+                <input type="number" name="minrates[]" class="form-control minrate-input" min="0" step="0.01" aria-label="Min Price">
                 <div class="error-message" data-error="minrate"></div>
               </td>
               <td>
-                <input type="number" name="maxrates[]" class="form-control maxrate-input" min="0" step="0.01" aria-label="Max Price" required>
+                <input type="number" name="maxrates[]" class="form-control maxrate-input" min="0" step="0.01" aria-label="Max Price">
                 <div class="error-message" data-error="maxrate"></div>
               </td>
               <td>
@@ -358,30 +356,29 @@
         // Test form values
         testFormBtn.addEventListener('click', () => {
           const formDataObj = {
-  state: document.getElementById("formState").value || filterState.value,
-  mandi: document.getElementById("formMandi").value,
-  types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value), // <--- FIXED
-  commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
-  minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
-  maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
-  arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
-};
-
+            state: document.getElementById("formState").value || filterState.value,
+            mandi: document.getElementById("formMandi").value,
+            types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value || "N/A"),
+            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value || "00"),
+            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value || "00"),
+            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value || "00")
+          };
           console.log('Test Form Data:', JSON.stringify(formDataObj, null, 2));
         });
 
         // Form submission with JSON
         mandiRateForm.addEventListener('submit', function(e) {
           e.preventDefault();
-        const formDataObj = {
-  state: document.getElementById("formState").value || filterState.value,
-  mandi: document.getElementById("formMandi").value,
-  types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value), // <--- FIXED
-  commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
-  minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value),
-  maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value),
-  arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value)
-};
+          const formDataObj = {
+            state: document.getElementById("formState").value || filterState.value,
+            mandi: document.getElementById("formMandi").value,
+            types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value || "N/A"),
+            commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
+            minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value || "00"),
+            maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value || "00"),
+            arrivals: Array.from(document.querySelectorAll('input[name="arrivals[]"]')).map(el => el.value || "00")
+          };
 
           console.log('JSON being sent:', JSON.stringify(formDataObj, null, 2));
 
@@ -397,25 +394,22 @@
             document.getElementById('mandiError').textContent = 'Please enter a mandi name.';
             isValid = false;
           }
-          formDataObj.types.forEach((type, i) => {
-            if (!type.trim()) {
-              document.querySelectorAll('select[name="types[]"]')[i].nextElementSibling.textContent = `Please select a type at row ${i + 1}.`;
-              isValid = false;
-            }
-          });
           formDataObj.commodity_ids.forEach((commodity, i) => {
             if (!commodity.trim()) {
               document.querySelectorAll('input[name="commodity_ids[]"]')[i].nextElementSibling.nextElementSibling.textContent = `Please enter a commodity at row ${i + 1}.`;
               isValid = false;
             }
-            if (!formDataObj.minrates[i] || isNaN(formDataObj.minrates[i]) || Number(formDataObj.minrates[i]) < 0) {
+            // Validate minrate
+            if (isNaN(formDataObj.minrates[i]) || Number(formDataObj.minrates[i]) < 0) {
               document.querySelectorAll('input[name="minrates[]"]')[i].nextElementSibling.textContent = `Please enter a valid min price at row ${i + 1}.`;
               isValid = false;
             }
-            if (!formDataObj.maxrates[i] || isNaN(formDataObj.maxrates[i]) || Number(formDataObj.maxrates[i]) < 0) {
+            // Validate maxrate
+            if (isNaN(formDataObj.maxrates[i]) || Number(formDataObj.maxrates[i]) < 0) {
               document.querySelectorAll('input[name="maxrates[]"]')[i].nextElementSibling.textContent = `Please enter a valid max price at row ${i + 1}.`;
               isValid = false;
             }
+            // Validate arrival
             if (formDataObj.arrivals[i] && (isNaN(formDataObj.arrivals[i]) || Number(formDataObj.arrivals[i]) < 0)) {
               document.querySelectorAll('input[name="arrivals[]"]')[i].nextElementSibling.textContent = `Please enter a valid quantity at row ${i + 1}.`;
               isValid = false;
@@ -435,7 +429,7 @@
           .then(res => {
             console.log('Response status:', res.status);
             if (!res.ok) return res.json().then(err => { throw new Error(err.error || `HTTP error! status: ${res.status}`); });
-            return res.text(); // Expect redirect
+            return res.text();
           })
           .then(data => {
             console.log('Response data:', data);
@@ -443,8 +437,29 @@
           })
           .catch(error => {
             console.error('Error submitting form:', error);
-            document.getElementById('formError').textContent = error.message || 'Failed to add mandi rate. Please try again.';
+            document.getElementById('formError').textContent = error.message || 'Failed to add QMandi rate. Please try again.';
           });
+        });
+
+        // Input validation for real-time default handling
+        mandiRateRows.addEventListener("input", function(e) {
+          const target = e.target;
+          const errorEl = target.nextElementSibling?.classList.contains('error-message') ? target.nextElementSibling : target.nextElementSibling?.nextElementSibling;
+          if (target.classList.contains('type-input')) {
+            errorEl.textContent = ''; // Type is optional, defaults to "N/A"
+          }
+          if (target.classList.contains('commodity-input')) {
+            errorEl.textContent = target.value.trim() ? '' : 'Please enter a commodity.';
+          }
+          if (target.classList.contains('minrate-input')) {
+            errorEl.textContent = (target.value && (isNaN(target.value) || Number(target.value) < 0)) ? 'Please enter a valid min price.' : '';
+          }
+          if (target.classList.contains('maxrate-input')) {
+            errorEl.textContent = (target.value && (isNaN(target.value) || Number(target.value) < 0)) ? 'Please enter a valid max price.' : '';
+          }
+          if (target.classList.contains('arrival-input')) {
+            errorEl.textContent = (target.value && (isNaN(target.value) || Number(target.value) < 0)) ? 'Please enter a valid quantity.' : '';
+          }
         });
 
         // State filter with enhanced debugging
@@ -567,11 +582,12 @@
                   <td class="sno">${sno++}</td>
                   <td>${row.mandi}</td>
                   <td><span>${row.stateName}</span> / <span>${row.mandi}</span></td>
-                  <td>${row.type}</td>
+                  <td>${row.type || "N/A"}</td>
                   <td class="commodity-cell"><span class="cell-text">${row.commodity}</span></td>
-                  <td class="editable"><span class="cell-text">${row.minrate}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.minrate}" style="display:none;" aria-label="Min Price" required></td>
-                  <td class="editable"><span class="cell-text">${row.maxrate}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.maxrate}" style="display:none;" aria-label="Max Price" required></td>
-                  <td class="editable"><span class="cell-text">${row.arrival}</span><input type="number" class="form-control cell-input arrival-input" min="0" step="0.01" value="${row.arrival}" style="display:none;" aria-label="Estimated Quantity"></td>
+                  <td class="editable"><span class="cell-text">${row.minrate || "00"}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.minrate || "00"}" style="display:none;" aria-label="Min Price" ></td>
+                  <td class="editable"><span class="cell-text">${row.maxrate || "00"}</span><input type="number" class="form-control cell-input" min="0" step="0.01" value="${row.maxrate || "00"}" style="display:none;" aria-label="Max Price" ></td>
+                  <td class="editable"><span class="cell-text">${row.arrival || "00"}</span><input type="number" class="form-control cell-input arrival-input" min="0" step="0.01" value指標
+value="${row.arrival || "00"}" style="display:none;" aria-label="Estimated Quantity"></td>
                   <td><span class="last-updated">${row.updated}</span></td>
                   <td class="trend-${trendIcon}">${row.difference} <i class="bi bi-arrow-${arrow}"></i></td>
                   <td>
@@ -683,27 +699,6 @@
           }
         });
 
-        // Input validation
-        mandiRateRows.addEventListener("input", function(e) {
-          const target = e.target;
-          const errorEl = target.nextElementSibling?.classList.contains('error-message') ? target.nextElementSibling : target.nextElementSibling?.nextElementSibling;
-          if (target.classList.contains('type-input')) {
-            errorEl.textContent = target.value.trim() ? '' : 'Please select a type.';
-          }
-          if (target.classList.contains('commodity-input')) {
-            errorEl.textContent = target.value.trim() ? '' : 'Please enter a commodity.';
-          }
-          if (target.classList.contains('minrate-input')) {
-            errorEl.textContent = (target.value && !isNaN(target.value) && Number(target.value) >= 0) ? '' : 'Please enter a valid min price.';
-          }
-          if (target.classList.contains('maxrate-input')) {
-            errorEl.textContent = (target.value && !isNaN(target.value) && Number(target.value) >= 0) ? '' : 'Please enter a valid max price.';
-          }
-          if (target.classList.contains('arrival-input')) {
-            errorEl.textContent = (target.value && (isNaN(target.value) || Number(target.value) < 0)) ? 'Please enter a valid quantity.' : '';
-          }
-        });
-
         // Inline edit
         mandiRateRows.addEventListener("click", function(e) {
           if (e.target.closest(".editRowBtn")) {
@@ -712,7 +707,7 @@
               row.querySelectorAll(".editable .cell-input").forEach(i => i.style.display = "none");
               row.querySelector(".editRowBtn").style.display = "";
               row.querySelector(".saveRowBtn").style.display = "none";
-              row.querySelector(".cancelRowBtn").style.display = "none"
+              row.querySelector(".cancelRowBtn").style.display = "none";
             });
             const tr = e.target.closest("tr.dataRow");
             tr.querySelectorAll(".editable .cell-text").forEach(t => t.style.display = "none");
@@ -736,11 +731,15 @@
             const tr = e.target.closest("tr.dataRow");
             const mandiRateId = tr.dataset.mandirateid;
             const commodity = tr.dataset.commodity;
-            const minrate = tr.querySelectorAll(".cell-input")[0].value;
-            const maxrate = tr.querySelectorAll(".cell-input")[1].value;
-            const arrival = tr.querySelectorAll(".cell-input")[2].value;
-            if (!minrate || !maxrate || isNaN(minrate) || isNaN(maxrate) || Number(minrate) < 0 || Number(maxrate) < 0) {
-              alert('Please enter valid min and max prices.');
+            const minrate = tr.querySelectorAll(".cell-input")[0].value || "00";
+            const maxrate = tr.querySelectorAll(".cell-input")[1].value || "00";
+            const arrival = tr.querySelectorAll(".cell-input")[2].value || "00";
+            if (isNaN(minrate) || Number(minrate) < 0) {
+              alert('Please enter a valid min price.');
+              return;
+            }
+            if (isNaN(maxrate) || Number(maxrate) < 0) {
+              alert('Please enter a valid max price.');
               return;
             }
             if (arrival && (isNaN(arrival) || Number(arrival) < 0)) {
@@ -789,9 +788,9 @@
                   const tr = document.createElement('tr');
                   tr.innerHTML = `
                     <td>${new Date(p.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
-                    <td>${p.minrate}</td>
-                    <td>${p.maxrate}</td>
-                    <td>${p.arrival}</td>
+                    <td>${p.minrate || "00"}</td>
+                    <td>${p.maxrate || "00"}</td>
+                    <td>${p.arrival || "00"}</td>
                     <td>${p.trend}</td>
                   `;
                   rows.appendChild(tr);
@@ -804,13 +803,13 @@
                     datasets: [
                       {
                         label: 'Min Price',
-                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.minrate })),
+                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.minrate || 0 })),
                         borderColor: '#4e54c8',
                         fill: false
                       },
                       {
                         label: 'Max Price',
-                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.maxrate })),
+                        data: data.prices.map(p => ({ x: new Date(p.date), y: p.maxrate || 0 })),
                         borderColor: '#28a745',
                         fill: false
                       }
@@ -927,10 +926,10 @@
                       <td>${item.mandiName}</td>
                       <td>${item.address}</td>
                       <td>${item.commodity}</td>
-                      <td>${item.type}</td>
-                      <td>${item.minimum}</td>
-                      <td>${item.maximum}</td>
-                      <td>${item.estimatedArrival}</td>
+                      <td>${item.type || "N/A"}</td>
+                      <td>${item.minimum || "00"}</td>
+                      <td>${item.maximum || "00"}</td>
+                      <td>${item.estimatedArrival || "00"}</td>
                       <td>${item.lastUpdated}</td>
                     `;
                     rows.appendChild(tr);
@@ -956,17 +955,17 @@
       });
     </script>
     <script>
-    // Collapsible Sidebar
-    const sidebar = document.getElementById('sidebar');
-    const collapseBtn = document.getElementById('collapseBtn');
-    const mainContent = document.getElementById('mainContent');
-    let collapsed = false;
-    collapseBtn.onclick = function() {
-      collapsed = !collapsed;
-      sidebar.classList.toggle('collapsed', collapsed);
-      mainContent.style.marginLeft = collapsed ? '65px' : '240px';
-      document.querySelector('.navbar').style.marginLeft = collapsed ? '65px' : '240px';
-    };
-  </script>
+      // Collapsible Sidebar
+      const sidebar = document.getElementById('sidebar');
+      const collapseBtn = document.getElementById('collapseBtn');
+      const mainContent = document.getElementById('mainContent');
+      let collapsed = false;
+      collapseBtn.onclick = function() {
+        collapsed = !collapsed;
+        sidebar.classList.toggle('collapsed', collapsed);
+        mainContent.style.marginLeft = collapsed ? '65px' : '240px';
+        document.querySelector('.navbar').style.marginLeft = collapsed ? '65px' : '240px';
+      };
+    </script>
 </body>
 </html>
