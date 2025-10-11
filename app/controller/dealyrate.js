@@ -126,45 +126,37 @@ class MandiRateController {
         mandiRate = new SabjiMandirate({ state, mandi, list: [], latest_trend: 0 });
       }
 
-      for (let i = 0; i < commodity_ids.length; i++) {
-        const commodityName = commodity_ids[i];
-        const type = types[i] || 'N/A'; // Default to 'N/A' for blank type
-        const minrate = minrates[i] != null ? parseFloat(minrates[i]) : 0; // Handle "00" or empty as 0
-        const maxrate = maxrates[i] != null ? parseFloat(maxrates[i]) : 0; // Handle "00" or empty as 0
-        const arrival = arrivals[i] != null ? parseFloat(arrivals[i]) : 0; // Handle "00" or empty as 0
+    for (let i = 0; i < commodity_ids.length; i++) {
+  const commodityName = commodity_ids[i];
+  const type = types[i] || 'N/A';
+  const minrate = minrates[i] != null ? parseFloat(minrates[i]) : 0;
+  const maxrate = maxrates[i] != null ? parseFloat(maxrates[i]) : 0;
+  const arrival = arrivals[i] != null ? parseFloat(arrivals[i]) : 0;
 
-        // Validate numeric values
-        if (isNaN(minrate) || isNaN(maxrate) || minrate < 0 || maxrate < 0 || (arrival != null && isNaN(arrival) || arrival < 0)) {
-          console.error('Invalid numeric values:', { minrate, maxrate, arrival });
-          return res.status(400).json({ error: `Invalid numeric values for prices or arrivals at row ${i + 1}` });
-        }
+  // Validate numeric values
+  if (isNaN(minrate) || isNaN(maxrate) || minrate < 0 || maxrate < 0 || (arrival != null && isNaN(arrival)) || arrival < 0) {
+    return res.status(400).json({ error: `Invalid numeric values for row ${i + 1}` });
+  }
 
-        const commodityEntry = mandiRate.list.find(c => c.commodity.toLowerCase() === commodityName.toLowerCase());
-        if (commodityEntry) {
-          const lastPrice = commodityEntry.prices[commodityEntry.prices.length - 1] || { minrate: 0 };
-          const trend = minrate > lastPrice.minrate ? 1 : minrate < lastPrice.minrate ? -1 : 0;
-          commodityEntry.prices.push({
-            minrate,
-            maxrate,
-            arrival,
-            date: new Date(),
-            trend
-          });
-          commodityEntry.type = type;
-        } else {
-          mandiRate.list.push({
-            commodity: commodityName,
-            type,
-            prices: [{
-              minrate,
-              maxrate,
-              arrival,
-              date: new Date(),
-              trend: 0
-            }]
-          });
-        }
-      }
+  // Find existing entry matching both commodity and type
+  const commodityEntry = mandiRate.list.find(c =>
+    c.commodity.toLowerCase() === commodityName.toLowerCase() &&
+    (c.type || 'N/A') === type
+  );
+
+  if (commodityEntry) {
+    const lastPrice = commodityEntry.prices[commodityEntry.prices.length - 1] || { minrate: 0 };
+    const trend = minrate > lastPrice.minrate ? 1 : minrate < lastPrice.minrate ? -1 : 0;
+    commodityEntry.prices.push({ minrate, maxrate, arrival, date: new Date(), trend });
+  } else {
+    mandiRate.list.push({
+      commodity: commodityName,
+      type,
+      prices: [{ minrate, maxrate, arrival, date: new Date(), trend: 0 }]
+    });
+  }
+}
+
 
       // Recalculate latest_trend
       mandiRate.latest_trend = mandiRate.list.reduce((sum, c) => {
@@ -180,68 +172,54 @@ class MandiRateController {
     }
   }
 
-  async addPriceToCommodity(req, res) {
-    try {
-      const { id, commodity } = req.params;
-      const { minrate, maxrate, arrival } = req.body;
+ async addPriceToCommodity(req, res) {
+  try {
+    const { id, commodity, type } = req.params; // type can be passed as query/body
+    const { minrate, maxrate, arrival } = req.body;
 
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ error: 'Invalid mandi rate ID' });
-      }
-      if (!commodity || !commodity.trim()) {
-        return res.status(400).json({ error: 'Commodity is required' });
-      }
-      if (minrate == null || maxrate == null || isNaN(Number(minrate)) || isNaN(Number(maxrate)) || Number(minrate) < 0 || Number(maxrate) < 0) {
-        return res.status(400).json({ error: 'Valid minrate and maxrate are required' });
-      }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid mandi rate ID' });
+    if (!commodity || !commodity.trim()) return res.status(400).json({ error: 'Commodity is required' });
 
-      const rate = await SabjiMandirate.findById(id);
-      if (!rate) return res.status(404).json({ error: 'Mandi rate record not found' });
+    const rate = await SabjiMandirate.findById(id);
+    if (!rate) return res.status(404).json({ error: 'Mandi rate not found' });
 
-      const index = rate.list.findIndex(l => l.commodity.toLowerCase() === commodity.toLowerCase());
-      if (index === -1) return res.status(404).json({ error: 'Commodity not found in this mandi' });
+    // Find commodity entry by name + type
+    const index = rate.list.findIndex(l =>
+      l.commodity.toLowerCase() === commodity.toLowerCase() &&
+      (l.type || 'N/A') === (type || 'N/A')
+    );
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    if (index === -1) return res.status(404).json({ error: 'Commodity not found in this mandi with this type' });
 
-      const prices = rate.list[index].prices;
-      const lastPrice = prices[prices.length - 1] || { maxrate: 0 };
-      const trend = Number(maxrate) - Number(lastPrice.maxrate || 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      // Convert inputs to numbers, defaulting to 0 for "00" or empty
-      const minrateNum = minrate != null ? Number(minrate) : 0;
-      const maxrateNum = maxrate != null ? Number(maxrate) : 0;
-      const arrivalNum = arrival != null ? Number(arrival) : 0;
+    const prices = rate.list[index].prices;
+    const lastPrice = prices[prices.length - 1] || { maxrate: 0 };
+    const trend = Number(maxrate) - Number(lastPrice.maxrate || 0);
 
-      const todayIndex = prices.findIndex(p => p.date.getTime() === today.getTime());
-      if (todayIndex > -1) {
-        prices[todayIndex] = {
-          minrate: minrateNum,
-          maxrate: maxrateNum,
-          arrival: arrivalNum,
-          date: today,
-          trend
-        };
-      } else {
-        prices.push({
-          minrate: minrateNum,
-          maxrate: maxrateNum,
-          arrival: arrivalNum,
-          date: today,
-          trend
-        });
-      }
+    const minrateNum = minrate != null ? Number(minrate) : 0;
+    const maxrateNum = maxrate != null ? Number(maxrate) : 0;
+    const arrivalNum = arrival != null ? Number(arrival) : 0;
 
-      rate.latest_trend = trend;
-      rate.updatedAt = new Date();
-      await rate.save();
-
-      res.json({ success: true, trend });
-    } catch (err) {
-      console.error('Error in addPriceToCommodity:', err);
-      res.status(500).json({ error: 'Failed to add price' });
+    const todayIndex = prices.findIndex(p => p.date.getTime() === today.getTime());
+    if (todayIndex > -1) {
+      prices[todayIndex] = { minrate: minrateNum, maxrate: maxrateNum, arrival: arrivalNum, date: today, trend };
+    } else {
+      prices.push({ minrate: minrateNum, maxrate: maxrateNum, arrival: arrivalNum, date: today, trend });
     }
+
+    rate.latest_trend = trend;
+    rate.updatedAt = new Date();
+    await rate.save();
+
+    res.json({ success: true, trend });
+  } catch (err) {
+    console.error('Error in addPriceToCommodity:', err);
+    res.status(500).json({ error: 'Failed to add price' });
   }
+}
+
 
   async deleteCommodity(req, res) {
     try {
@@ -268,36 +246,59 @@ class MandiRateController {
     }
   }
 
-  async getHistory(req, res) {
-    try {
-      const { id, commodity } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ error: 'Invalid mandi rate ID' });
-      }
-      if (!commodity || !commodity.trim()) {
-        return res.status(400).json({ error: 'Commodity is required' });
-      }
-      const rate = await SabjiMandirate.findById(id).populate('state');
-      if (!rate) return res.status(404).json({ error: 'Mandi rate not found' });
-      const item = rate.list.find(l => l.commodity.toLowerCase() === commodity.toLowerCase());
-      if (!item) return res.status(404).json({ error: 'Commodity not found' });
-      res.json({
-        state: rate.state.name,
-        mandi: rate.mandi,
-        commodity: item.commodity,
-        prices: item.prices.sort((a, b) => a.date - b.date).map(p => ({
-          date: new Date(p.date).toISOString(),
-          minrate: p.minrate != null ? p.minrate : 0,
-          maxrate: p.maxrate != null ? p.maxrate : 0,
-          arrival: p.arrival != null ? p.arrival : 0,
-          trend: p.trend || 0
-        }))
-      });
-    } catch (err) {
-      console.error('Error in getHistory:', err);
-      res.status(500).json({ error: 'Failed to fetch history' });
+async getHistory(req, res) {
+  try {
+    const { id, commodity } = req.params;
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid mandi rate ID' });
     }
+
+    // Validate commodity
+    if (!commodity || !commodity.trim()) {
+      return res.status(400).json({ error: 'Commodity is required' });
+    }
+
+    // Fetch the rate
+    const rate = await SabjiMandirate.findById(id).populate('state');
+    if (!rate) return res.status(404).json({ error: 'Mandi rate not found' });
+
+    // Filter items matching the commodity (case-insensitive)
+    const items = rate.list.filter(
+      l => l.commodity.toLowerCase() === commodity.toLowerCase()
+    );
+    if (!items.length) return res.status(404).json({ error: 'Commodity not found' });
+
+    // Prepare history grouped by type
+    const historyByType = items.map(item => ({
+      type: item.type || 'Unknown',
+      prices: (item.prices || [])
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(p => ({
+          date: new Date(p.date).toISOString(),
+          minrate: p.minrate ?? 0,
+          maxrate: p.maxrate ?? 0,
+          arrival: p.arrival ?? 0,
+          trend: p.trend ?? 0
+        }))
+    }));
+
+    // Respond
+    res.json({
+      state: rate.state?.name || 'Unknown',
+      mandi: rate.mandi || 'Unknown',
+      commodity: commodity,
+      history: historyByType
+    });
+
+  } catch (err) {
+    console.error('Error in getHistory:', err);
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
+}
+
+
 
   async exportCSV(req, res) {
     try {

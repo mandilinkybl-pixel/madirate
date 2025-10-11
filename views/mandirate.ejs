@@ -219,16 +219,20 @@
               <td>
                 <input type="text" class="form-control addAddress" value="" readonly aria-label="Address">
               </td>
-              <td>
-  <input 
-    type="text" 
+            <td>
+  <select 
     name="types[]" 
-    class="form-control type-input" 
-    placeholder="Enter Type (e.g., Organic, Conventional)"
+    class="form-control type-select" 
     aria-label="Type"
   >
+    <option value="">Select Type</option>
+    <option value="Combine">Combine</option>
+    <option value="Hath">Hath</option>
+    <option value="Other">Other</option>
+  </select>
   <div class="error-message" data-error="type"></div>
 </td>
+
 
               <td>
                 <input type="text" name="commodity_ids[]" class="form-control commodity-input" list="commodityList" aria-label="Commodity" required>
@@ -358,7 +362,7 @@
           const formDataObj = {
             state: document.getElementById("formState").value || filterState.value,
             mandi: document.getElementById("formMandi").value,
-            types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value || "N/A"),
+            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value || "N/A"),
             commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
             minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value || "00"),
             maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value || "00"),
@@ -373,7 +377,7 @@
           const formDataObj = {
             state: document.getElementById("formState").value || filterState.value,
             mandi: document.getElementById("formMandi").value,
-            types: Array.from(document.querySelectorAll('input[name="types[]"]')).map(el => el.value || "N/A"),
+            types: Array.from(document.querySelectorAll('select[name="types[]"]')).map(el => el.value || "N/A"),
             commodity_ids: Array.from(document.querySelectorAll('input[name="commodity_ids[]"]')).map(el => el.value),
             minrates: Array.from(document.querySelectorAll('input[name="minrates[]"]')).map(el => el.value || "00"),
             maxrates: Array.from(document.querySelectorAll('input[name="maxrates[]"]')).map(el => el.value || "00"),

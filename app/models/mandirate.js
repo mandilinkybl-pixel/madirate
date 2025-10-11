@@ -21,7 +21,7 @@ const PriceSchema = new mongoose.Schema({
 // Sub-schema for each commodity
 const CommodityListSchema = new mongoose.Schema({
   commodity: { type: String,  trim: true },
-  type: { type: String,  trim: true },
+  type: { type: String,  enum:["Combine","Hath","Other","N/A"] , default: "N/A", trim: true },
   prices: {
     type: [PriceSchema],
     
