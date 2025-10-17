@@ -521,6 +521,7 @@ exports.history = async (req, res) => {
   }
 };
 
+
 // RENDER: Main report page (with filters, preview, PDF buttons, chart modal)
 exports.reportPage = async (req, res) => {
   try {
