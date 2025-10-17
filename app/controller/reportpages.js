@@ -323,7 +323,7 @@ exports.exportAllBeautifulMultiPDF = async (req, res) => {
     const headerHeight = 28;
     const footerHeight = 20;
     const logoPath = path.join(__dirname, '../background.png');
-    const logoPathHeader = path.join(__dirname, '../image.png');
+    const logoPathHeader = path.join(__dirname, '../logo.png');
 
     // === PAGE BACKGROUND ===
     function drawPageBackground() {
@@ -520,7 +520,6 @@ exports.history = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch history' });
   }
 };
-
 
 // RENDER: Main report page (with filters, preview, PDF buttons, chart modal)
 exports.reportPage = async (req, res) => {
