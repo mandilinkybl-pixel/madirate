@@ -110,7 +110,7 @@ exports.exportBeautifulMultiPDF = async (req, res) => {
     const headerHeight = 28;
     const footerHeight = 20;
     const logoPath = path.join(__dirname, '../background.png');
-    const logoPathHeader = path.join(__dirname, '../image.png');
+    const logoPathHeader = path.join(__dirname, '../logo.png');
 
     // === PAGE BACKGROUND ===
     function drawPageBackground() {
