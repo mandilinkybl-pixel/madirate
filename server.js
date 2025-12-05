@@ -48,6 +48,7 @@ app.get('/mandirates/beautiful-preview', mandirateController.beautifulPreview);
 app.get('/mandirates/export/beautiful-multi-pdf', mandirateController.exportBeautifulMultiPDF);
 app.get('/mandirates/export/all-beautiful-multi-pdf', mandirateController.exportAllBeautifulMultiPDF);
 app.get('/mandirates/history/:mandi/:commodity', mandirateController.history);
+app.use('/api', require('./app/routes/api'));
 
 // Server start
 app.listen(process.env.PORT || 3005, () => {
